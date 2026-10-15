@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalkLedger — Voice-First Ledger for Small Businesses</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: '#FFF8EA',
+                        'cream-card': '#FFFFFF',
+                        'leaf-green': '#176B45',
+                        'leaf-dark': '#0E492E',
+                        'mint-green': '#DDF3DF',
+                        'haldi-yellow': '#FFC857',
+                        'tomato-red': '#E96850',
+                        'ink-brown': '#342B25',
+                        'ink-muted': '#6B5E55',
+                        'notebook-line': '#E8DFC8',
+                        'margin-red': '#F3A193'
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        handwriting: ['Caveat', 'cursive']
+                    },
+                    boxShadow: {
+                        'bahi': '3px 4px 0px 0px #342B25',
+                        'bahi-lg': '6px 8px 0px 0px #342B25',
+                        'bahi-sm': '2px 2px 0px 0px #342B25',
+                        'soft': '0 10px 30px -5px rgba(52, 43, 37, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Bahi-Khata Paper & Notebook Styling */
+        body {
+            background-color: #FFF8EA;
+            color: #342B25;
+            background-image: radial-gradient(#E8DFC8 0.75px, transparent 0.75px);
+            background-size: 16px 16px;
+        }
+
+        .ledger-line {
+            background-image: linear-gradient(to bottom, transparent 95%, #E8DFC8 95%);
+            background-size: 100% 2.2rem;
+        }
+
+        .notebook-margin {
+            border-left: 2px dashed #E96850;
+        }
+
+        /* Pulse wave animation for Voice Recording */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.25); opacity: 0.3; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .wave-ring {
+            animation: pulse-ring 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+
+        .sound-bar {
+            animation: sound-height 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes sound-height {
+            0% { height: 8px; }
+            100% { height: 32px; }
+        }
+
+        /* Toast notification animation */
+        #toast {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFF8EA;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #342B25;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased text-ink-brown selection:bg-haldi-yellow">
+
+    <!-- TOP NAVIGATION HEADER -->
+    <header class="sticky top-0 z-40 bg-cream/90 backdrop-blur-md border-b-2 border-ink-brown px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <!-- Brand Logo -->
+            <button onclick="switchTab('landing')" class="flex items-center gap-3 text-left group focus:outline-none">
+                <div class="w-10 h-10 rounded-xl bg-leaf-green border-2 border-ink-brown flex items-center justify-center text-cream shadow-bahi-sm group-hover:-translate-y-0.5 transition-transform">
+                    <i class="fa-solid fa-book-bookmark text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-extrabold text-xl tracking-tight leading-none text-ink-brown">TalkLedger</span>
+                        <span class="text-xs bg-haldi-yellow border border-ink-brown text-ink-brown font-bold px-1.5 py-0.5 rounded-md shadow-sm">AI</span>
+                    </div>
+                    <span class="text-[10px] font-medium text-ink-muted hidden sm:block">Speak naturally. Track every balance.</span>
+                </div>
+            </button>
+
+            <!-- Main Desktop Navigation -->
+            <nav class="hidden md:flex items-center gap-1 lg:gap-2 bg-white/80 p-1.5 rounded-xl border-2 border-ink-brown shadow-bahi-sm">
+                <button id="nav-landing" onclick="switchTab('landing')" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all bg-leaf-green text-cream">
+                    <i class="fa-solid fa-house mr-1.5 text-xs"></i>Home
+                </button>
+                <button id="nav-dashboard" onclick="switchTab('dashboard')" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all text-ink-brown hover:bg-cream">
+                    <i class="fa-solid fa-chart-pie mr-1.5 text-xs"></i>Dashboard
+                </button>
+                <button id="nav-voice" onclick="switchTab('voice')" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all text-ink-brown hover:bg-cream flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-tomato-red animate-ping"></span>
+                    <i class="fa-solid fa-microphone text-xs"></i>Voice Entry
+                </button>
+                <button id="nav-ledger" onclick="switchTab('ledger')" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all text-ink-brown hover:bg-cream">
+                    <i class="fa-solid fa-address-book mr-1.5 text-xs"></i>Customer Ledger
+                </button>
+                <button id="nav-payments" onclick="switchTab('payments')" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all text-ink-brown hover:bg-cream">
+                    <i class="fa-solid fa-money-bill-transfer mr-1.5 text-xs"></i>Payments
+                </button>
+            </nav>
+
+            <!-- Action CTA Buttons -->
+            <div class="flex items-center gap-2">
+                <button onclick="switchTab('voice')" class="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-haldi-yellow text-ink-brown border-2 border-ink-brown rounded-xl font-bold text-sm shadow-bahi hover:bg-yellow-400 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
+                    <i class="fa-solid fa-microphone text-tomato-red"></i>
+                    <span>Speak to Add</span>
+                </button>
+                <button onclick="switchTab('dashboard')" class="px-4 py-2 bg-leaf-green text-cream border-2 border-ink-brown rounded-xl font-bold text-sm shadow-bahi hover:bg-leaf-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
+                    Open Ledger
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 lg:p-8">
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 1: LANDING PAGE                                            -->
+        <!-- ================================================================= -->
+        <section id="screen-landing" class="tab-screen space-y-12">
+            <!-- HERO SECTION -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-4 pb-8">
+                <!-- Left Column Text -->
+                <div class="lg:col-span-6 space-y-6">
+                    <div class="inline-flex items-center gap-2 bg-mint-green border-2 border-ink-brown px-3 py-1.5 rounded-full text-xs font-bold text-leaf-dark shadow-bahi-sm">
+                        <span>✨ A smarter ledger for small businesses</span>
+                        <span class="bg-haldi-yellow px-2 py-0.5 rounded-full border border-ink-brown text-[10px]">Made for small businesses ❤️</span>
+                    </div>
+
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-ink-brown leading-[1.1] tracking-tight">
+                        Credit tracking <br>
+                        <span class="text-tomato-red underline decoration-haldi-yellow decoration-wavy underline-offset-4">Without the headache.</span>
+                    </h1>
+
+                    <p class="text-lg text-ink-muted font-medium max-w-xl">
+                        Just speak naturally. Track customers, credit, and payments in your own words. Start with English, Hindi, or Hinglish.
+                    </p>
+
+                    <!-- CTA Group -->
+                    <div class="flex flex-wrap items-center gap-4 pt-2">
+                        <button onclick="switchTab('dashboard')" class="px-6 py-3.5 bg-leaf-green text-cream font-extrabold text-base border-2 border-ink-brown rounded-xl shadow-bahi hover:bg-leaf-dark active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center gap-2">
+                            <span>Open Your Ledger</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                        <button onclick="scrollToSection('how-it-works')" class="px-5 py-3.5 bg-white text-ink-brown font-bold text-base border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-cream active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-circle-play text-leaf-green"></i>
+                            <span>See How It Works</span>
+                        </button>
+                    </div>
+
+                    <!-- Handwritten Annotation -->
+                    <div class="pt-2 flex items-center gap-3">
+                        <span class="font-handwriting text-2xl text-leaf-green font-bold -rotate-2">A clearer view of every transaction.</span>
+                        <i class="fa-solid fa-arrow-turn-down text-leaf-green rotate-45"></i>
+                    </div>
+                </div>
+
+                <!-- Right Column Interactive Hero Demo Card -->
+                <div class="lg:col-span-6">
+                    <div class="bg-white border-2 border-ink-brown rounded-2xl p-6 shadow-bahi-lg relative overflow-hidden">
+                        <!-- Red Margin Line -->
+                        <div class="absolute left-6 top-0 bottom-0 w-0.5 border-r-2 border-margin-red"></div>
+
+                        <div class="pl-6 space-y-5">
+                            <div class="flex justify-between items-center pb-3 border-b-2 border-notebook-line">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-tomato-red"></span>
+                                    <span class="w-3 h-3 rounded-full bg-haldi-yellow"></span>
+                                    <span class="w-3 h-3 rounded-full bg-leaf-green"></span>
+                                    <span class="text-xs font-extrabold text-ink-muted uppercase tracking-wider ml-2">Voice Ledger Preview</span>
+                                </div>
+                                <span class="bg-mint-green text-leaf-dark text-xs font-bold px-2.5 py-1 rounded-md border border-ink-brown">Interactive Demo</span>
+                            </div>
+
+                            <!-- Voice Input Simulation Box -->
+                            <div class="bg-cream p-4 rounded-xl border-2 border-ink-brown space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-ink-muted flex items-center gap-1.5">
+                                        <i class="fa-solid fa-microphone text-tomato-red"></i> Voice Input (Spoken)
+                                    </span>
+                                    <span class="text-xs font-handwriting text-xl text-leaf-green font-bold">"Speak in your own words"</span>
+                                </div>
+                                
+                                <div class="p-3 bg-white rounded-lg border border-ink-brown font-medium text-ink-brown flex items-center justify-between">
+                                    <span>"Aarav Sharma purchased supplies worth ₹340."</span>
+                                    <button onclick="playHeroAudioDemo()" class="text-xs bg-haldi-yellow px-2.5 py-1 rounded border border-ink-brown font-bold hover:bg-yellow-400">
+                                        <i class="fa-solid fa-volume-high mr-1"></i>Listen
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Live AI Review Card -->
+                            <div class="bg-mint-green/60 p-4 rounded-xl border-2 border-ink-brown space-y-3 relative">
+                                <div class="absolute -top-3 right-4 bg-haldi-yellow text-ink-brown border border-ink-brown px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">
+                                    Review Before Saving
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3 pt-1">
+                                    <div>
+                                        <span class="text-[11px] font-bold text-ink-muted uppercase block">Customer Name</span>
+                                        <span class="font-bold text-lg text-ink-brown">Aarav Sharma</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[11px] font-bold text-ink-muted uppercase block">Amount</span>
+                                        <span class="font-extrabold text-lg text-tomato-red">₹340</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[11px] font-bold text-ink-muted uppercase block">Transaction Type</span>
+                                        <span class="inline-block bg-tomato-red text-white text-xs font-bold px-2 py-0.5 rounded border border-ink-brown">Credit Added</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[11px] font-bold text-ink-muted uppercase block">Confidence</span>
+                                        <span class="text-xs font-bold text-leaf-green"><i class="fa-solid fa-circle-check"></i> Review Required</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2 pt-2 border-t border-ink-brown/20">
+                                    <button onclick="switchTab('dashboard')" class="flex-1 py-2 bg-leaf-green text-cream font-bold text-xs rounded-lg border border-ink-brown shadow-bahi-sm hover:bg-leaf-dark">
+                                        ✓ Confirm & Save
+                                    </button>
+                                    <button onclick="switchTab('voice')" class="px-3 py-2 bg-white text-ink-brown font-bold text-xs rounded-lg border border-ink-brown shadow-bahi-sm hover:bg-cream">
+                                        Edit Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FEATURE HIGHLIGHTS (3 GRID) -->
+            <div class="space-y-6 pt-6">
+                <div class="text-center space-y-2">
+                    <span class="font-handwriting text-3xl text-leaf-green font-bold">Made for Everyday Business</span>
+                    <h2 class="text-3xl font-extrabold text-ink-brown">Why Choose TalkLedger?</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Feature 1 -->
+                    <div class="bg-white p-6 rounded-2xl border-2 border-ink-brown shadow-bahi space-y-3">
+                        <div class="w-12 h-12 bg-haldi-yellow rounded-xl border-2 border-ink-brown flex items-center justify-center text-xl text-ink-brown font-bold shadow-bahi-sm">
+                            <i class="fa-solid fa-microphone-lines"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-ink-brown">Voice-First Entry</h3>
+                        <p class="text-sm text-ink-muted leading-relaxed">
+                            Skip the typing. Speak naturally and review the suggested customer, amount, and due date before saving.
+                        </p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="bg-white p-6 rounded-2xl border-2 border-ink-brown shadow-bahi space-y-3">
+                        <div class="w-12 h-12 bg-mint-green rounded-xl border-2 border-ink-brown flex items-center justify-center text-xl text-leaf-green font-bold shadow-bahi-sm">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-ink-brown">Polite Payment Reminders</h3>
+                        <p class="text-sm text-ink-muted leading-relaxed">
+                            Create polite, editable payment reminders that you can copy and share when you are ready.
+                        </p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="bg-white p-6 rounded-2xl border-2 border-ink-brown shadow-bahi space-y-3">
+                        <div class="w-12 h-12 bg-cream rounded-xl border-2 border-ink-brown flex items-center justify-center text-xl text-tomato-red font-bold shadow-bahi-sm">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-ink-brown">Privacy-Conscious by Design</h3>
+                        <p class="text-sm text-ink-muted leading-relaxed">
+                            Your ledger should give you clear control over your business records. Cloud backup and offline support can be added and verified as the product develops.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOW IT WORKS SECTION -->
+            <div id="how-it-works" class="bg-cream-card border-2 border-ink-brown rounded-3xl p-8 shadow-bahi-lg space-y-8">
+                <div class="text-center space-y-2">
+                    <span class="font-handwriting text-3xl text-tomato-red font-bold">Aasan 3 Steps</span>
+                    <h2 class="text-3xl font-extrabold text-ink-brown">How It Works</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                    <!-- Step 1 -->
+                    <div class="space-y-3 text-center md:text-left relative">
+                        <div class="w-10 h-10 bg-leaf-green text-cream rounded-full border-2 border-ink-brown flex items-center justify-center font-extrabold text-lg mx-auto md:mx-0 shadow-bahi-sm">
+                            1
+                        </div>
+                        <h4 class="text-lg font-bold text-ink-brown">Mic Button Dabayein</h4>
+                        <p class="text-sm text-ink-muted">Open the app, tap the microphone, and speak naturally as you would during a regular business transaction.</p>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="space-y-3 text-center md:text-left relative">
+                        <div class="w-10 h-10 bg-haldi-yellow text-ink-brown rounded-full border-2 border-ink-brown flex items-center justify-center font-extrabold text-lg mx-auto md:mx-0 shadow-bahi-sm">
+                            2
+                        </div>
+                        <h4 class="text-lg font-bold text-ink-brown">AI Entry Review Karein</h4>
+                        <p class="text-sm text-ink-muted">TalkLedger automatically customer, amount, aur date extract karega. Confirm button dabayein.</p>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="space-y-3 text-center md:text-left relative">
+                        <div class="w-10 h-10 bg-tomato-red text-cream rounded-full border-2 border-ink-brown flex items-center justify-center font-extrabold text-lg mx-auto md:mx-0 shadow-bahi-sm">
+                            3
+                        </div>
+                        <h4 class="text-lg font-bold text-ink-brown">Your Ledger Is Updated!</h4>
+                        <p class="text-sm text-ink-muted">Your entry will be added to the ledger and the balance will update automatically.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRIVACY SECTION -->
+            <div class="bg-mint-green border-2 border-ink-brown rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-bahi">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-leaf-green text-cream rounded-2xl border-2 border-ink-brown flex items-center justify-center text-2xl flex-shrink-0 shadow-bahi-sm">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-ink-brown">Your Data, Your Control</h3>
+                        <p class="text-sm text-ink-muted">We do not share your financial ledger or customer phone numbers with anyone. Bank-grade 256-bit encryption.</p>
+                    </div>
+                </div>
+                <button onclick="switchTab('dashboard')" class="px-5 py-2.5 bg-leaf-green text-cream font-bold text-sm border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark whitespace-nowrap">
+                    Get Started
+                </button>
+            </div>
+
+            <!-- FOOTER -->
+            <footer class="pt-8 border-t-2 border-notebook-line flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-ink-muted font-medium">
+                <div>
+                    <span class="font-bold text-ink-brown">TalkLedger</span> © 2026. Made with ❤️ for small businesses.
+                </div>
+                <div class="flex gap-4">
+                    <a href="#" onclick="alert('Privacy Policy: All voice recordings are processed securely and never sold.'); return false;" class="hover:underline">Privacy</a>
+                    <a href="#" onclick="alert('Terms: Free to use digital ledger tool.'); return false;" class="hover:underline">Terms</a>
+                    <a href="#" onclick="alert('Support: WhatsApp us at +91 98765 00000'); return false;" class="hover:underline">Help & Support</a>
+                </div>
+            </footer>
+        </section>
+
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 2: MAIN DASHBOARD                                          -->
+        <!-- ================================================================= -->
+        <section id="screen-dashboard" class="tab-screen hidden space-y-6">
+            <!-- Top Dashboard Header -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border-2 border-ink-brown shadow-bahi">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-ink-brown">Welcome back! 👋</h1>
+                        <span class="font-handwriting text-2xl text-leaf-green font-bold">Daily overview dekh lo</span>
+                    </div>
+                    <p class="text-sm text-ink-muted mt-0.5">Sample Store • Demo Ledger</p>
+                </div>
+
+                <!-- Customer Search Bar -->
+                <div class="relative max-w-xs w-full">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted text-sm"></i>
+                    <input type="text" id="dashboard-search" onkeyup="filterTransactions()" placeholder="Search customer (e.g. Aarav Sharma)..." class="w-full pl-10 pr-4 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold text-ink-brown focus:outline-none focus:ring-2 focus:ring-leaf-green">
+                </div>
+            </div>
+
+            <!-- Financial Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <!-- Card 1: Total Credit -->
+                <div class="bg-white p-5 rounded-2xl border-2 border-ink-brown shadow-bahi relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-ink-muted uppercase tracking-wider block">Total Credit (Outstanding)</span>
+                            <span id="dash-total-udhaar" class="text-3xl font-extrabold text-tomato-red mt-1 block">₹24,850</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-tomato-red/10 border-2 border-ink-brown flex items-center justify-center text-tomato-red font-bold">
+                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-notebook-line flex justify-between items-center text-xs">
+                        <span class="text-ink-muted">To collect from customers</span>
+                        <span class="font-bold text-tomato-red">18 Customers</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Payments Received -->
+                <div class="bg-white p-5 rounded-2xl border-2 border-ink-brown shadow-bahi relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-ink-muted uppercase tracking-wider block">Payments Received (This Month)</span>
+                            <span id="dash-total-payments" class="text-3xl font-extrabold text-leaf-green mt-1 block">₹12,400</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-mint-green border-2 border-ink-brown flex items-center justify-center text-leaf-green font-bold">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-notebook-line flex justify-between items-center text-xs">
+                        <span class="text-ink-muted">Settled via Cash & UPI</span>
+                        <span class="font-bold text-leaf-green">+14% vs last month</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Pending Customers -->
+                <div class="bg-white p-5 rounded-2xl border-2 border-ink-brown shadow-bahi relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-ink-muted uppercase tracking-wider block">Pending Due Reminders</span>
+                            <span class="text-3xl font-extrabold text-ink-brown mt-1 block">18</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-haldi-yellow border-2 border-ink-brown flex items-center justify-center text-ink-brown font-bold">
+                            <i class="fa-solid fa-clock font-bold"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-notebook-line flex justify-between items-center text-xs">
+                        <span class="text-ink-muted">Overdue &gt; 7 days</span>
+                        <button onclick="switchTab('ledger')" class="font-bold text-leaf-green hover:underline">Send Reminders →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Bar -->
+            <div class="bg-cream-card p-4 rounded-2xl border-2 border-ink-brown shadow-bahi flex flex-wrap gap-3 items-center justify-between">
+                <span class="font-bold text-sm text-ink-brown flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-haldi-yellow text-base"></i> Quick Actions:
+                </span>
+                <div class="flex flex-wrap gap-2.5">
+                    <button onclick="openNewCreditModal()" class="px-3.5 py-2 bg-tomato-red text-white text-xs font-extrabold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-red-600 flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Add Credit
+                    </button>
+                    <button onclick="switchTab('payments')" class="px-3.5 py-2 bg-leaf-green text-cream text-xs font-extrabold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i> Record Payment
+                    </button>
+                    <button onclick="openAddCustomerModal()" class="px-3.5 py-2 bg-white text-ink-brown text-xs font-extrabold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-cream flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-plus"></i> Add Customer
+                    </button>
+                    <button onclick="switchTab('voice')" class="px-4 py-2 bg-haldi-yellow text-ink-brown text-xs font-extrabold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-yellow-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-microphone text-tomato-red"></i> Speak to Add
+                    </button>
+                </div>
+            </div>
+
+            <!-- Charts & Recent Transactions Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Weekly Collections Bar Chart -->
+                <div class="lg:col-span-5 bg-white p-5 rounded-2xl border-2 border-ink-brown shadow-bahi flex flex-col justify-between space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-extrabold text-base text-ink-brown">Weekly Collections</h3>
+                            <span class="text-xs text-ink-muted">Last 7 days recovery trend</span>
+                        </div>
+                        <span class="font-handwriting text-xl text-leaf-green font-bold">Good Recovery!</span>
+                    </div>
+
+                    <!-- Custom HTML/CSS Bar Chart -->
+                    <div class="h-44 flex items-end justify-between gap-2 pt-6 pb-2 px-2 border-b-2 border-notebook-line">
+                        <div class="flex-1 flex flex-col items-center gap-1 group">
+                            <span class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">₹1,200</span>
+                            <div class="w-full bg-mint-green border-2 border-ink-brown rounded-t-lg transition-all group-hover:bg-leaf-green" style="height: 40%;"></div>
+                            <span class="text-[11px] font-bold text-ink-muted">Mon</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center gap-1 group">
+                            <span class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">₹2,400</span>
+                            <div class="w-full bg-mint-green border-2 border-ink-brown rounded-t-lg transition-all group-hover:bg-leaf-green" style="height: 65%;"></div>
+                            <span class="text-[11px] font-bold text-ink-muted">Tue</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center gap-1 group">
+                            <span class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">₹800</span>
+                            <div class="w-full bg-mint-green border-2 border-ink-brown rounded-t-lg transition-all group-hover:bg-leaf-green" style="height: 25%;"></div>
+                            <span class="text-[11px] font-bold text-ink-muted">Wed</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center gap-1 group">
+                            <span class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">₹3,500</span>
+                            <div class="w-full bg-haldi-yellow border-2 border-ink-brown rounded-t-lg transition-all group-hover:bg-yellow-400" style="height: 85%;"></div>
+                            <span class="text-[11px] font-bold text-ink-muted">Thu</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center gap-1 group">
+                            <span class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">₹1,800</span>
+                            <div class="w-full bg-mint-green border-2 border-ink-brown rounded-t-lg transition-all group-hover:bg-leaf-green" style="height: 50%;"></div>
+                            <span class="text-[11px] font-bold text-ink-muted">Fri</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center gap-1 group">
+                            <span class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">₹4,200</span>
+                            <div class="w-full bg-leaf-green border-2 border-ink-brown rounded-t-lg transition-all" style="height: 100%;"></div>
+                            <span class="text-[11px] font-bold text-ink-muted">Sat</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center gap-1 group">
+                            <span class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">₹1,500</span>
+                            <div class="w-full bg-mint-green border-2 border-ink-brown rounded-t-lg transition-all group-hover:bg-leaf-green" style="height: 45%;"></div>
+                            <span class="text-[11px] font-bold text-ink-muted">Sun</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-xs font-bold text-ink-muted pt-1">
+                        <span>Total Collected: <strong class="text-leaf-green text-sm">₹15,400</strong></span>
+                        <span class="text-tomato-red">Target: ₹20,000</span>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions Table Card -->
+                <div class="lg:col-span-7 bg-white p-5 rounded-2xl border-2 border-ink-brown shadow-bahi space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-notebook-line pb-3">
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-extrabold text-base text-ink-brown">Recent Transactions</h3>
+                            <span class="bg-cream text-ink-brown text-xs font-bold px-2 py-0.5 rounded border border-ink-brown" id="txn-count-badge">5 Entries</span>
+                        </div>
+                        <!-- Filter Chips -->
+                        <div class="flex gap-1.5 text-xs font-bold">
+                            <button onclick="filterType('all')" class="txn-filter-btn px-2.5 py-1 rounded bg-ink-brown text-cream border border-ink-brown" id="filter-all">All</button>
+                            <button onclick="filterType('udhaar')" class="txn-filter-btn px-2.5 py-1 rounded bg-cream text-ink-brown border border-ink-brown hover:bg-tomato-red hover:text-white" id="filter-udhaar">Credit</button>
+                            <button onclick="filterType('paid')" class="txn-filter-btn px-2.5 py-1 rounded bg-cream text-ink-brown border border-ink-brown hover:bg-leaf-green hover:text-white" id="filter-paid">Payments</button>
+                        </div>
+                    </div>
+
+                    <!-- Transactions List -->
+                    <div class="space-y-3 max-h-80 overflow-y-auto pr-1" id="dashboard-txn-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 3: VOICE-FIRST TRANSACTION ENTRY                           -->
+        <!-- ================================================================= -->
+        <section id="screen-voice" class="tab-screen hidden max-w-3xl mx-auto space-y-6">
+            <div class="text-center space-y-2">
+                <div class="inline-flex items-center gap-2 bg-haldi-yellow border border-ink-brown px-3 py-1 rounded-full text-xs font-bold text-ink-brown">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> AI Powered Voice Recognition
+                </div>
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-ink-brown">Speak. Review. Save.</h1>
+                <p class="text-sm text-ink-muted">Speak naturally in your shop dialect. AI automatically fills the ledger.</p>
+            </div>
+
+            <!-- Language Pill Selection -->
+            <div class="flex justify-center gap-2">
+                <button onclick="selectLanguage('Hindi')" id="lang-hindi" class="lang-pill px-4 py-1.5 rounded-full border-2 border-ink-brown font-bold text-xs bg-leaf-green text-cream shadow-bahi-sm">
+                    Hindi
+                </button>
+                <button onclick="selectLanguage('Hinglish')" id="lang-hinglish" class="lang-pill px-4 py-1.5 rounded-full border-2 border-ink-brown font-bold text-xs bg-white text-ink-brown shadow-bahi-sm hover:bg-cream">
+                    Hinglish
+                </button>
+                <button onclick="selectLanguage('English')" id="lang-english" class="lang-pill px-4 py-1.5 rounded-full border-2 border-ink-brown font-bold text-xs bg-white text-ink-brown shadow-bahi-sm hover:bg-cream">
+                    🌐 English
+                </button>
+            </div>
+
+            <!-- Voice Recording Canvas Box -->
+            <div class="bg-white border-2 border-ink-brown rounded-3xl p-8 shadow-bahi-lg text-center space-y-6 relative overflow-hidden">
+                <!-- Handwritten note -->
+                <span class="absolute top-4 right-6 font-handwriting text-2xl text-leaf-green font-bold -rotate-3">
+                    Try speaking now! 🎙️
+                </span>
+
+                <!-- Giant Mic Button with Wave Ring -->
+                <div class="relative py-4 flex justify-center items-center">
+                    <div id="wave-ring-element" class="hidden absolute w-48 h-48 rounded-full bg-tomato-red/20 wave-ring"></div>
+                    
+                    <button id="mic-trigger-btn" onclick="toggleVoiceRecording()" class="relative z-10 w-28 h-28 bg-tomato-red text-white border-4 border-ink-brown rounded-full flex flex-col items-center justify-center shadow-bahi hover:scale-105 active:scale-95 transition-all">
+                        <i id="mic-icon" class="fa-solid fa-microphone text-4xl"></i>
+                        <span id="mic-label" class="text-[10px] uppercase font-extrabold tracking-wider mt-1">TAP TO SPEAK</span>
+                    </button>
+                </div>
+
+                <!-- Animated Waveforms (Shown while recording) -->
+                <div id="sound-waveform" class="hidden flex items-center justify-center gap-1.5 h-10">
+                    <div class="w-1.5 bg-tomato-red rounded-full sound-bar" style="animation-delay: 0.1s"></div>
+                    <div class="w-1.5 bg-tomato-red rounded-full sound-bar" style="animation-delay: 0.3s"></div>
+                    <div class="w-1.5 bg-tomato-red rounded-full sound-bar" style="animation-delay: 0.2s"></div>
+                    <div class="w-1.5 bg-tomato-red rounded-full sound-bar" style="animation-delay: 0.4s"></div>
+                    <div class="w-1.5 bg-tomato-red rounded-full sound-bar" style="animation-delay: 0.15s"></div>
+                </div>
+
+                <div id="voice-status-text" class="text-sm font-bold text-ink-muted">
+                    Click the microphone or choose an example below:
+                </div>
+
+                <!-- Sample Clickable Spoken Phrase Chips -->
+                <div class="space-y-2 pt-2 border-t border-notebook-line">
+                    <span class="text-xs font-bold text-ink-muted uppercase block">Try an example:</span>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button onclick="simulateSpeech('Ramesh Kumar has ₹500 outstanding and will pay next Friday.')" class="text-xs bg-cream hover:bg-haldi-yellow border border-ink-brown font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                            "Ramesh Kumar has ₹500 outstanding and will pay next Friday."
+                        </button>
+                        <button onclick="simulateSpeech('Aarav Sharma paid ₹1,200 in cash.')" class="text-xs bg-cream hover:bg-haldi-yellow border border-ink-brown font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                            "Aarav Sharma paid ₹1,200 in cash."
+                        </button>
+                        <button onclick="simulateSpeech('Anita Tailor received fabric worth ₹850 on credit.')" class="text-xs bg-cream hover:bg-haldi-yellow border border-ink-brown font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                            "Anita Tailor received fabric worth ₹850 on credit."
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extraction Review Form (Editable) -->
+            <div id="voice-review-card" class="bg-mint-green/80 border-2 border-ink-brown rounded-2xl p-6 shadow-bahi space-y-4">
+                <div class="flex items-center justify-between border-b-2 border-ink-brown/20 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-leaf-green"></span>
+                        <h3 class="font-extrabold text-lg text-ink-brown">Extracted Transaction Preview</h3>
+                    </div>
+                    <span class="text-xs font-bold bg-white px-2.5 py-1 rounded border border-ink-brown text-leaf-dark">
+                        Please verify before saving
+                    </span>
+                </div>
+
+                <form id="voice-entry-form" onsubmit="saveVoiceTransaction(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Customer Name</label>
+                        <input type="text" id="voice-cust-name" value="Ramesh Kumar" required class="w-full px-3 py-2 bg-white border-2 border-ink-brown rounded-xl text-sm font-bold text-ink-brown focus:outline-none focus:ring-2 focus:ring-leaf-green">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Amount (₹)</label>
+                        <input type="number" id="voice-amount" value="500" required class="w-full px-3 py-2 bg-white border-2 border-ink-brown rounded-xl text-sm font-bold text-ink-brown focus:outline-none focus:ring-2 focus:ring-leaf-green">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Transaction Type</label>
+                        <select id="voice-type" class="w-full px-3 py-2 bg-white border-2 border-ink-brown rounded-xl text-sm font-bold text-ink-brown focus:outline-none focus:ring-2 focus:ring-leaf-green">
+                            <option value="udhaar">Credit Added</option>
+                            <option value="payment">Payment Received</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Due Date / Promise Date</label>
+                        <input type="date" id="voice-due-date" class="w-full px-3 py-2 bg-white border-2 border-ink-brown rounded-xl text-sm font-bold text-ink-brown focus:outline-none focus:ring-2 focus:ring-leaf-green">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Transcription Note</label>
+                        <input type="text" id="voice-raw-text" value="Ramesh Kumar has ₹500 outstanding and will pay next Friday." class="w-full px-3 py-2 bg-white border-2 border-ink-brown rounded-xl text-xs text-ink-muted">
+                    </div>
+
+                    <div class="sm:col-span-2 flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 py-3 bg-leaf-green text-cream font-extrabold text-sm border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark active:translate-y-0.5">
+                            ✓ Confirm & Save to Ledger
+                        </button>
+                        <button type="button" onclick="toggleVoiceRecording()" class="px-5 py-3 bg-white text-ink-brown font-bold text-sm border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-cream">
+                            Record Again
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 4: CUSTOMER LEDGER (INDIVIDUAL VIEW)                -->
+        <!-- ================================================================= -->
+        <section id="screen-ledger" class="tab-screen hidden space-y-6">
+            <!-- Customer Selector Bar -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border-2 border-ink-brown shadow-bahi">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <span class="text-xs font-bold text-ink-muted uppercase">Select Customer:</span>
+                    <select id="customer-select" onchange="loadCustomerLedger()" class="px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold text-ink-brown focus:outline-none">
+                        <option value="Ramesh Kumar">Ramesh Kumar (+91 98765 43210)</option>
+                        <option value="Aarav Sharma">Aarav Sharma (+91 98123 45678)</option>
+                        <option value="Anita Tailor">Anita Tailor (+91 99887 76655)</option>
+                        <option value="Gupta Market">Gupta Market (+91 97766 55443)</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="openNewCreditModal()" class="px-3.5 py-2 bg-tomato-red text-white text-xs font-bold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-red-600">
+                        + Add Credit
+                    </button>
+                    <button onclick="switchTab('payments')" class="px-3.5 py-2 bg-leaf-green text-cream text-xs font-bold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark">
+                        ✓ Record Payment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Customer Header Card -->
+            <div class="bg-white p-6 rounded-2xl border-2 border-ink-brown shadow-bahi relative">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div class="flex items-center gap-4">
+                        <!-- Avatar Initials -->
+                        <div id="cust-avatar" class="w-16 h-16 bg-haldi-yellow text-ink-brown font-extrabold text-2xl border-2 border-ink-brown rounded-2xl flex items-center justify-center shadow-bahi-sm">
+                            RB
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 id="cust-name-title" class="text-2xl font-extrabold text-ink-brown">Ramesh Kumar</h2>
+                                <span class="bg-mint-green text-leaf-dark text-xs font-bold px-2 py-0.5 rounded border border-ink-brown">Regular Customer</span>
+                            </div>
+                            <p id="cust-phone" class="text-sm font-bold text-ink-muted mt-0.5"><i class="fa-solid fa-phone mr-1"></i> +91 98765 43210</p>
+                        </div>
+                    </div>
+
+                    <!-- Reminder WhatsApp Action Box -->
+                    <div class="bg-cream p-3.5 rounded-xl border-2 border-ink-brown flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div class="text-left">
+                            <span class="text-[11px] font-bold text-ink-muted uppercase block">Payment Reminder</span>
+                            <span class="text-xs font-bold text-ink-brown">Send polite WhatsApp message</span>
+                        </div>
+                        <button onclick="copyReminderMessage()" class="w-full sm:w-auto px-4 py-2 bg-leaf-green text-cream font-bold text-xs rounded-lg border border-ink-brown shadow-bahi-sm hover:bg-leaf-dark flex items-center justify-center gap-1.5">
+                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                            <span>Copy Reminder</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Financial Metrics Bar for this Customer -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t-2 border-notebook-line">
+                    <div>
+                        <span class="text-[11px] font-bold text-ink-muted uppercase">Current Balance</span>
+                        <span id="cust-current-bal" class="text-2xl font-extrabold text-tomato-red block">₹500</span>
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold text-ink-muted uppercase">Total Credit Given</span>
+                        <span id="cust-total-credit" class="text-xl font-bold text-ink-brown block">₹2,500</span>
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold text-ink-muted uppercase">Total Received</span>
+                        <span id="cust-total-received" class="text-xl font-bold text-leaf-green block">₹2,000</span>
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold text-ink-muted uppercase">Last Activity</span>
+                        <span id="cust-last-activity" class="text-sm font-bold text-ink-brown block mt-1">Today, 10:30 AM</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ledger-inspired transaction table -->
+            <div class="bg-white rounded-2xl border-2 border-ink-brown shadow-bahi-lg overflow-hidden relative">
+                <!-- Red Notebook Margin Line -->
+                <div class="absolute left-8 top-0 bottom-0 w-0.5 border-r-2 border-margin-red hidden sm:block"></div>
+
+                <div class="p-4 bg-cream border-b-2 border-ink-brown flex justify-between items-center">
+                    <span class="font-extrabold text-sm text-ink-brown flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-leaf-green"></i> Ledger Entry History
+                    </span>
+                    <span class="font-handwriting text-2xl text-leaf-green font-bold">Ledger Summary</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-white border-b-2 border-ink-brown text-xs font-extrabold text-ink-muted uppercase">
+                                <th class="p-3.5 pl-6">Date</th>
+                                <th class="p-3.5">Details / Description</th>
+                                <th class="p-3.5 text-right text-tomato-red">Credit Added (+)</th>
+                                <th class="p-3.5 text-right text-leaf-green">Payment Received (−)</th>
+                                <th class="p-3.5 text-right pr-6">Running Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledger-table-body" class="divide-y divide-notebook-line text-sm font-medium">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 5: CUSTOMERS & PAYMENTS                                    -->
+        <!-- ================================================================= -->
+        <section id="screen-payments" class="tab-screen hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-ink-brown">Customers & Payments</h1>
+                    <p class="text-sm text-ink-muted">Manage all store accounts, filter balances, and log new cash/UPI payments.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openAddCustomerModal()" class="px-4 py-2 bg-white text-ink-brown text-sm font-bold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-cream">
+                        + New Customer
+                    </button>
+                    <button onclick="openPaymentModal()" class="px-4 py-2 bg-leaf-green text-cream text-sm font-bold border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark">
+                        ✓ Record Payment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Directory Grid & Quick Payment Recording Split Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Customer Directory List (8 cols) -->
+                <div class="lg:col-span-7 bg-white p-6 rounded-2xl border-2 border-ink-brown shadow-bahi space-y-4">
+                    <div class="flex items-center justify-between gap-2 pb-3 border-b-2 border-notebook-line">
+                        <h3 class="font-extrabold text-base text-ink-brown">Customer Directory</h3>
+                        <div class="flex gap-1 text-xs">
+                            <button onclick="filterCustList('all')" class="cust-filter-btn px-2.5 py-1 rounded bg-ink-brown text-cream font-bold">All</button>
+                            <button onclick="filterCustList('pending')" class="cust-filter-btn px-2.5 py-1 rounded bg-cream border border-ink-brown font-bold text-tomato-red">Has Credit</button>
+                        </div>
+                    </div>
+
+                    <!-- Search Input -->
+                    <input type="text" id="cust-dir-search" onkeyup="renderCustomerDirectory()" placeholder="Filter customer name..." class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-xs font-bold">
+
+                    <!-- Customer Cards Container -->
+                    <div id="cust-directory-container" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Record Payment Form Box (5 cols) -->
+                <div class="lg:col-span-5 bg-white p-6 rounded-2xl border-2 border-ink-brown shadow-bahi space-y-5 h-fit">
+                    <div class="flex items-center justify-between border-b-2 border-notebook-line pb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-mint-green border border-ink-brown flex items-center justify-center text-leaf-green font-bold">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <h3 class="font-extrabold text-base text-ink-brown">Record New Payment</h3>
+                        </div>
+                        <span class="text-xs font-handwriting text-xl text-leaf-green font-bold">Quick Settlement</span>
+                    </div>
+
+                    <form id="payment-recording-form" onsubmit="submitNewPayment(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Select Customer</label>
+                            <select id="pay-customer-select" required class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold text-ink-brown focus:outline-none">
+                                <option value="Ramesh Kumar">Ramesh Kumar (Balance: ₹500)</option>
+                                <option value="Aarav Sharma">Aarav Sharma (Balance: ₹1,240)</option>
+                                <option value="Anita Tailor">Anita Tailor (Balance: ₹850)</option>
+                                <option value="Gupta Market">Gupta Market (Balance: ₹0)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Payment Amount (₹)</label>
+                            <input type="number" id="pay-amount-input" placeholder="e.g. 500" min="1" required class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-extrabold text-leaf-green focus:outline-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Payment Mode</label>
+                                <select id="pay-mode-select" class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-xs font-bold text-ink-brown">
+                                    <option value="Cash">💵 Cash</option>
+                                    <option value="UPI / PhonePe">📱 UPI / PhonePe</option>
+                                    <option value="Bank Transfer">🏦 Bank Transfer</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Date</label>
+                                <input type="date" id="pay-date-input" required class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-xs font-bold text-ink-brown">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Optional Note</label>
+                            <input type="text" id="pay-note-input" placeholder="e.g. Partial settlement for ration" class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-xs text-ink-brown">
+                        </div>
+
+                        <button type="submit" class="w-full py-3 bg-leaf-green text-cream font-extrabold text-sm border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark active:translate-y-0.5 transition-all">
+                            ✓ Confirm Payment & Save
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+
+    <!-- ================================================================= -->
+    <!-- MODALS & TOAST NOTIFICATIONS                                      -->
+    <!-- ================================================================= -->
+
+    <!-- ADD CREDIT MODAL -->
+    <div id="add-udhaar-modal" class="hidden fixed inset-0 z-50 bg-ink-brown/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border-2 border-ink-brown rounded-3xl max-w-md w-full p-6 shadow-bahi-lg space-y-4 animate-in fade-in zoom-in duration-150">
+            <div class="flex justify-between items-center border-b-2 border-notebook-line pb-3">
+                <h3 class="font-extrabold text-lg text-ink-brown">Add Credit Entry</h3>
+                <button onclick="closeModal('add-udhaar-modal')" class="w-8 h-8 rounded-lg bg-cream border border-ink-brown flex items-center justify-center font-bold">✕</button>
+            </div>
+
+            <form onsubmit="submitAddCredit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Customer Name</label>
+                    <input type="text" id="modal-udhaar-name" placeholder="e.g. Taylor Morgan" required class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Credit Amount (₹)</label>
+                    <input type="number" id="modal-udhaar-amount" placeholder="350" required class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold text-tomato-red">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Items / Reason</label>
+                    <input type="text" id="modal-udhaar-items" placeholder="e.g. flour, cooking oil" class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-xs font-medium">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="flex-1 py-2.5 bg-tomato-red text-white font-extrabold text-sm border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-red-600">
+                        Save Credit
+                    </button>
+                    <button type="button" onclick="closeModal('add-udhaar-modal')" class="px-4 py-2.5 bg-cream border-2 border-ink-brown text-ink-brown font-bold text-sm rounded-xl">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD CUSTOMER MODAL -->
+    <div id="add-cust-modal" class="hidden fixed inset-0 z-50 bg-ink-brown/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border-2 border-ink-brown rounded-3xl max-w-md w-full p-6 shadow-bahi-lg space-y-4">
+            <div class="flex justify-between items-center border-b-2 border-notebook-line pb-3">
+                <h3 class="font-extrabold text-lg text-ink-brown">Add New Customer</h3>
+                <button onclick="closeModal('add-cust-modal')" class="w-8 h-8 rounded-lg bg-cream border border-ink-brown flex items-center justify-center font-bold">✕</button>
+            </div>
+
+            <form onsubmit="submitNewCustomer(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Full Name</label>
+                    <input type="text" id="new-cust-name" placeholder="e.g. Riverside Bakery" required class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Mobile Number</label>
+                    <input type="tel" id="new-cust-phone" placeholder="+91 98000 00000" required class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-ink-muted mb-1">Opening Balance (₹)</label>
+                    <input type="number" id="new-cust-bal" value="0" class="w-full px-3 py-2 bg-cream border-2 border-ink-brown rounded-xl text-sm font-bold">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="flex-1 py-2.5 bg-leaf-green text-cream font-extrabold text-sm border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark">
+                        Create Customer Ledger
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- GLOBAL TOAST POPUP -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-ink-brown text-cream px-5 py-3.5 rounded-2xl border-2 border-haldi-yellow shadow-bahi-lg flex items-center gap-3">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-haldi-yellow text-lg"></i>
+            <span id="toast-message" class="text-xs font-bold">Action completed successfully!</span>
+        </div>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- APPLICATION LOGIC & JAVASCRIPT                                    -->
+    <!-- ================================================================= -->
+    <script>
+        // GLOBAL DATA STATE
+        let transactions = [
+            { id: 1, name: 'Aarav Sharma', type: 'udhaar', amount: 340, desc: 'Groceries & Flour', date: '16 Oct 2026, 09:15 AM' },
+            { id: 2, name: 'Ramesh Kumar', type: 'udhaar', amount: 500, desc: 'Mobile Recharge & Snacks', date: '15 Oct 2026, 06:40 PM' },
+            { id: 3, name: 'Gupta Market', type: 'paid', amount: 1200, desc: 'UPI Settlement', date: '14 Oct 2026, 02:10 PM' },
+            { id: 4, name: 'Anita Tailor', type: 'udhaar', amount: 850, desc: 'Dress material credit', date: '12 Oct 2026, 11:00 AM' },
+            { id: 5, name: 'Aarav Sharma', type: 'paid', amount: 900, desc: 'Cash Payment Received', date: '10 Oct 2026, 08:30 PM' }
+        ];
+
+        let customerLedgerData = {
+            'Ramesh Kumar': [
+                { date: '15 Oct 2026', desc: 'Mobile recharge & tea items', credit: 500, payment: 0, balance: 500 },
+                { date: '10 Oct 2026', desc: 'Cash payment received', credit: 0, payment: 1000, balance: 0 },
+                { date: '01 Oct 2026', desc: 'Monthly grocery credit', credit: 1000, payment: 0, balance: 1000 }
+            ],
+            'Aarav Sharma': [
+                { date: '16 Oct 2026', desc: 'Groceries & Flour', credit: 340, payment: 0, balance: 1240 },
+                { date: '10 Oct 2026', desc: 'Cash payment', credit: 0, payment: 900, balance: 900 },
+                { date: '05 Oct 2026', desc: 'Festival supplies on credit', credit: 1800, payment: 0, balance: 1800 }
+            ],
+            'Anita Tailor': [
+                { date: '12 Oct 2026', desc: 'Dress material credit', credit: 850, payment: 0, balance: 850 }
+            ],
+            'Gupta Market': [
+                { date: '14 Oct 2026', desc: 'Full UPI Settlement', credit: 0, payment: 1200, balance: 0 },
+                { date: '02 Oct 2026', desc: 'Bulk Sugar & Oil', credit: 1200, payment: 0, balance: 1200 }
+            ]
+        };
+
+        let activeRecording = false;
+
+        // INITIALIZATION ON WINDOW LOAD
+        window.onload = function() {
+            // Set current date on date input fields
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('voice-due-date').value = today;
+            document.getElementById('pay-date-input').value = today;
+
+            // Render default screens data
+            renderDashboardTxns();
+            loadCustomerLedger();
+            renderCustomerDirectory();
+        };
+
+        // VIEW TAB SWITCHER FUNCTION
+        function switchTab(screenId) {
+            // Hide all screen sections
+            const screens = document.querySelectorAll('.tab-screen');
+            screens.forEach(s => s.classList.add('hidden'));
+
+            // Show selected screen
+            const targetScreen = document.getElementById(`screen-${screenId}`);
+            if (targetScreen) targetScreen.classList.remove('hidden');
+
+            // Reset navigation button active styling
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => {
+                btn.classList.remove('bg-leaf-green', 'text-cream');
+                btn.classList.add('text-ink-brown', 'hover:bg-cream');
+            });
+
+            const activeBtn = document.getElementById(`nav-${screenId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-ink-brown', 'hover:bg-cream');
+                activeBtn.classList.add('bg-leaf-green', 'text-cream');
+            }
+
+            // Scroll top smoothly
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // SCROLL TO SECTION
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // TOAST DISPLAY
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.innerText = message;
+
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3200);
+        }
+
+        // RENDER DASHBOARD TRANSACTIONS
+        function renderDashboardTxns(filter = 'all', query = '') {
+            const container = document.getElementById('dashboard-txn-list');
+            container.innerHTML = '';
+
+            let filtered = transactions.filter(t => {
+                if (filter === 'udhaar') return t.type === 'udhaar';
+                if (filter === 'paid') return t.type === 'paid';
+                return true;
+            });
+
+            if (query.trim() !== '') {
+                filtered = filtered.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
+            }
+
+            document.getElementById('txn-count-badge').innerText = `${filtered.length} Entries`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-sm text-ink-muted">No transactions found matching criteria.</div>`;
+                return;
+            }
+
+            filtered.forEach(t => {
+                const isCredit = t.type === 'udhaar';
+                const itemHtml = `
+                    <div class="p-3 bg-cream rounded-xl border-2 border-ink-brown flex items-center justify-between hover:bg-white transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg ${isCredit ? 'bg-tomato-red/10 text-tomato-red' : 'bg-mint-green text-leaf-green'} border border-ink-brown flex items-center justify-center font-bold text-sm">
+                                <i class="fa-solid ${isCredit ? 'fa-arrow-up-right' : 'fa-arrow-down-left'}"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm text-ink-brown">${t.name}</h4>
+                                <span class="text-[11px] text-ink-muted block">${t.desc} • ${t.date}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-extrabold text-base ${isCredit ? 'text-tomato-red' : 'text-leaf-green'} block">
+                                ${isCredit ? '+' : '-'} ₹${t.amount}
+                            </span>
+                            <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border border-ink-brown ${isCredit ? 'bg-tomato-red/10 text-tomato-red' : 'bg-mint-green text-leaf-dark'}">
+                                ${isCredit ? 'Credit' : 'Paid'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += itemHtml;
+            });
+        }
+
+        // FILTER TRANSACTIONS BY SEARCH
+        function filterTransactions() {
+            const query = document.getElementById('dashboard-search').value;
+            renderDashboardTxns('all', query);
+        }
+
+        // FILTER TRANSACTIONS BY TYPE CHIP
+        function filterType(type) {
+            document.querySelectorAll('.txn-filter-btn').forEach(b => {
+                b.classList.remove('bg-ink-brown', 'text-cream');
+                b.classList.add('bg-cream', 'text-ink-brown');
+            });
+            const selectedBtn = document.getElementById(`filter-${type}`);
+            if (selectedBtn) {
+                selectedBtn.classList.remove('bg-cream', 'text-ink-brown');
+                selectedBtn.classList.add('bg-ink-brown', 'text-cream');
+            }
+            renderDashboardTxns(type);
+        }
+
+        // VOICE SIMULATION
+        function toggleVoiceRecording() {
+            const wave = document.getElementById('wave-ring-element');
+            const bars = document.getElementById('sound-waveform');
+            const label = document.getElementById('mic-label');
+            const status = document.getElementById('voice-status-text');
+
+            if (!activeRecording) {
+                activeRecording = true;
+                wave.classList.remove('hidden');
+                bars.classList.remove('hidden');
+                label.innerText = "LISTENING...";
+                status.innerText = "Listening... Speak clearly.";
+
+                // Simulate recognition after 3 seconds
+                setTimeout(() => {
+                    simulateSpeech("Ramesh Kumar has ₹500 outstanding and will pay next Friday.");
+                }, 2800);
+            } else {
+                activeRecording = false;
+                wave.classList.add('hidden');
+                bars.classList.add('hidden');
+                label.innerText = "TAP TO SPEAK";
+                status.innerText = "Click the microphone or choose an example below:";
+            }
+        }
+
+        function simulateSpeech(phrase) {
+            activeRecording = false;
+            document.getElementById('wave-ring-element').classList.add('hidden');
+            document.getElementById('sound-waveform').classList.add('hidden');
+            document.getElementById('mic-label').innerText = "TAP TO SPEAK";
+            document.getElementById('voice-status-text').innerText = `Captured Speech: "${phrase}"`;
+
+            document.getElementById('voice-raw-text').value = phrase;
+
+            // Simple mock extraction logic based on input string
+            if (phrase.includes('Aarav Sharma')) {
+                document.getElementById('voice-cust-name').value = "Aarav Sharma";
+                document.getElementById('voice-amount').value = "1200";
+                document.getElementById('voice-type').value = "payment";
+            } else if (phrase.includes('Anita')) {
+                document.getElementById('voice-cust-name').value = "Anita Tailor";
+                document.getElementById('voice-amount').value = "850";
+                document.getElementById('voice-type').value = "udhaar";
+            } else {
+                document.getElementById('voice-cust-name').value = "Ramesh Kumar";
+                document.getElementById('voice-amount').value = "500";
+                document.getElementById('voice-type').value = "udhaar";
+            }
+
+            showToast("Demo extracted transaction details. Review them before saving.");
+        }
+
+        function selectLanguage(lang) {
+            document.querySelectorAll('.lang-pill').forEach(p => {
+                p.classList.remove('bg-leaf-green', 'text-cream');
+                p.classList.add('bg-white', 'text-ink-brown');
+            });
+            event.target.classList.remove('bg-white', 'text-ink-brown');
+            event.target.classList.add('bg-leaf-green', 'text-cream');
+            showToast(`Language set to ${lang}`);
+        }
+
+        function saveVoiceTransaction(e) {
+            e.preventDefault();
+            const name = document.getElementById('voice-cust-name').value;
+            const amount = parseInt(document.getElementById('voice-amount').value);
+            const type = document.getElementById('voice-type').value;
+
+            // Add to transactions state
+            transactions.unshift({
+                id: Date.now(),
+                name: name,
+                type: type,
+                amount: amount,
+                desc: 'Voice entry (demo)',
+                date: 'Just now'
+            });
+
+            renderDashboardTxns();
+            showToast(`✓ Ledger updated for ${name} (₹${amount})!`);
+            switchTab('dashboard');
+        }
+
+        // LOAD CUSTOMER LEDGER (SCREEN 4)
+        function loadCustomerLedger() {
+            const custName = document.getElementById('customer-select').value;
+            document.getElementById('cust-name-title').innerText = custName;
+
+            // Initials avatar
+            const initials = custName.split(' ').map(n => n[0]).join('');
+            document.getElementById('cust-avatar').innerText = initials;
+
+            const rows = customerLedgerData[custName] || [];
+            const tbody = document.getElementById('ledger-table-body');
+            tbody.innerHTML = '';
+
+            let totalBal = 0;
+            let totalCredit = 0;
+            let totalRec = 0;
+
+            rows.forEach(r => {
+                totalCredit += r.credit;
+                totalRec += r.payment;
+                totalBal += (r.credit - r.payment);
+
+                const tr = `
+                    <tr class="hover:bg-cream/50 transition-colors">
+                        <td class="p-3.5 pl-6 font-bold text-xs text-ink-muted">${r.date}</td>
+                        <td class="p-3.5 font-semibold text-ink-brown">${r.desc}</td>
+                        <td class="p-3.5 text-right font-extrabold text-tomato-red">${r.credit > 0 ? '₹' + r.credit : '-'}</td>
+                        <td class="p-3.5 text-right font-extrabold text-leaf-green">${r.payment > 0 ? '₹' + r.payment : '-'}</td>
+                        <td class="p-3.5 text-right pr-6 font-extrabold text-ink-brown">₹${Math.max(0, totalBal)}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += tr;
+            });
+
+            document.getElementById('cust-current-bal').innerText = `₹${Math.max(0, totalBal)}`;
+            document.getElementById('cust-total-credit').innerText = `₹${totalCredit}`;
+            document.getElementById('cust-total-received').innerText = `₹${totalRec}`;
+        }
+
+        // COPY WHATSAPP REMINDER TO CLIPBOARD
+        function copyReminderMessage() {
+            const custName = document.getElementById('customer-select').value;
+            const bal = document.getElementById('cust-current-bal').innerText;
+            const text = `Hello ${custName}, your current outstanding balance is ${bal}. Please make the payment when convenient. Thank you!`;
+
+            // Copy using fallback textarea method
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showToast("📲 Reminder text copied to clipboard!");
+        }
+
+        // SCREEN 5: CUSTOMER DIRECTORY & PAYMENTS
+        function renderCustomerDirectory(filter = 'all') {
+            const container = document.getElementById('cust-directory-container');
+            const search = document.getElementById('cust-dir-search').value.toLowerCase();
+            container.innerHTML = '';
+
+            const customers = [
+                { name: 'Aarav Sharma', phone: '+91 98123 45678', bal: 1240, overdue: true },
+                { name: 'Ramesh Kumar', phone: '+91 98765 43210', bal: 500, overdue: false },
+                { name: 'Anita Tailor', phone: '+91 99887 76655', bal: 850, overdue: true },
+                { name: 'Gupta Market', phone: '+91 97766 55443', bal: 0, overdue: false }
+            ];
+
+            customers.forEach(c => {
+                if (filter === 'pending' && c.bal === 0) return;
+                if (search && !c.name.toLowerCase().includes(search)) return;
+
+                const cardHtml = `
+                    <div class="p-3 bg-cream rounded-xl border-2 border-ink-brown flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-ink-brown">${c.name}</h4>
+                            <span class="text-xs text-ink-muted">${c.phone}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-extrabold text-sm block ${c.bal > 0 ? 'text-tomato-red' : 'text-leaf-green'}">
+                                ₹${c.bal}
+                            </span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border border-ink-brown ${c.bal > 0 ? 'bg-tomato-red/10 text-tomato-red' : 'bg-mint-green text-leaf-dark'}">
+                                ${c.bal > 0 ? 'Pending' : 'Settled'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            });
+        }
+
+        function filterCustList(type) {
+            document.querySelectorAll('.cust-filter-btn').forEach(b => {
+                b.classList.remove('bg-ink-brown', 'text-cream');
+                b.classList.add('bg-cream', 'text-ink-brown');
+            });
+            event.target.classList.remove('bg-cream', 'text-ink-brown');
+            event.target.classList.add('bg-ink-brown', 'text-cream');
+            renderCustomerDirectory(type);
+        }
+
+        function submitNewPayment(e) {
+            e.preventDefault();
+            const cust = document.getElementById('pay-customer-select').value;
+            const amount = document.getElementById('pay-amount-input').value;
+
+            transactions.unshift({
+                id: Date.now(),
+                name: cust.split(' ')[0],
+                type: 'paid',
+                amount: parseInt(amount),
+                desc: 'Payment Recorded',
+                date: 'Just now'
+            });
+
+            renderDashboardTxns();
+            showToast(`✓ Received payment of ₹${amount} from ${cust}!`);
+            document.getElementById('payment-recording-form').reset();
+        }
+
+        // MODAL HANDLERS
+        function openNewCreditModal() { document.getElementById('add-udhaar-modal').classList.remove('hidden'); }
+        function openAddCustomerModal() { document.getElementById('add-cust-modal').classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function submitAddCredit(e) {
+            e.preventDefault();
+            const name = document.getElementById('modal-udhaar-name').value;
+            const amt = parseInt(document.getElementById('modal-udhaar-amount').value);
+            const items = document.getElementById('modal-udhaar-items').value || 'Credit items';
+
+            transactions.unshift({
+                id: Date.now(),
+                name: name,
+                type: 'udhaar',
+                amount: amt,
+                desc: items,
+                date: 'Just now'
+            });
+
+            renderDashboardTxns();
+            closeModal('add-udhaar-modal');
+            showToast(`Saved a ₹${amt} credit entry for ${name}!`);
+        }
+
+        function submitNewCustomer(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-cust-name').value;
+            closeModal('add-cust-modal');
+            showToast(`Created new ledger account for ${name}!`);
+        }
+
+        function playHeroAudioDemo() {
+            showToast("🔊 Playing sample audio preview (demo mode)...");
+        }
+    </script>
+</body>
+</html>

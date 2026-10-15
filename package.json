@@ -1,0 +1,20 @@
+{
+  "name": "talkledger",
+  "version": "1.0.0",
+  "description": "TalkLedger — Voice-First Digital Credit and Payment Ledger for Small Businesses",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "test": "npm --prefix server test",
+    "db:generate": "npm --prefix server run db:generate",
+    "db:push": "npm --prefix server run db:push",
+    "db:seed": "npm --prefix server run db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
