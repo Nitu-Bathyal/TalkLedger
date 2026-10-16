@@ -160,14 +160,14 @@ flowchart TD
     UI --> API["POST /api/gemma/chat"]
     API --> Gemma["Gemma 2 Model (Groq / HuggingFace / Ollama)"]
     Gemma --> Tools["Authorized Database Tools"]
-    Tools --> DB[("Prisma SQLite / Postgres")]
+    Tools --> DB["Prisma SQLite / Postgres"]
     DB --> Tools
     Tools --> Gemma
     Gemma --> Preview["Interactive Action Preview Card"]
     Preview --> Confirm{"Merchant Clicks Confirm?"}
-    Confirm -- Yes --> Commit["POST /api/gemma/confirm-action"]
+    Confirm -->|Yes| Commit["POST /api/gemma/confirm-action"]
     Commit --> DB
-    Confirm -- No --> Cancel["Discarded (No Writes)"]
+    Confirm -->|No| Cancel["Discarded (No Writes)"]
 ```
 
 ### Configuring Gemma Providers:
