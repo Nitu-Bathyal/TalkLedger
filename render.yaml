@@ -9,6 +9,7 @@ services:
   - type: web
     name: talkledger
     runtime: node
+    branch: master
     # PLAN SELECTION NOTE:
     # Persistent disks (disk:) require Render's Starter plan ($7/mo instance + $0.25/GB/mo disk).
     # If deploying on Render Free Tier: Remove the 'disk' block below and set DATABASE_URL
