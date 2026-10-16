@@ -49,7 +49,12 @@ export async function authenticateToken(
   next: NextFunction
 ): Promise<void> {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const rawToken = authHeader && authHeader.split(' ')[1];
+
+  // Treat 'null', 'undefined', or blank tokens as no token passed (resilient dev mode)
+  const token = rawToken && rawToken !== 'null' && rawToken !== 'undefined' && rawToken.trim() !== ''
+    ? rawToken.trim()
+    : null;
 
   if (token) {
     try {
@@ -60,6 +65,7 @@ export async function authenticateToken(
       });
 
       if (!user) {
+        console.warn(`[Auth] Account not found for token on ${req.method} ${req.originalUrl}`);
         res.status(401).json({ error: 'User account not found or deactivated' });
         return;
       }
@@ -68,6 +74,7 @@ export async function authenticateToken(
       next();
       return;
     } catch {
+      console.warn(`[Auth] Invalid/expired token on ${req.method} ${req.originalUrl}`);
       res.status(403).json({ error: 'Invalid or expired authentication token' });
       return;
     }

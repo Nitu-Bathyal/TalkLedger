@@ -368,7 +368,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 interface AddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newCustomer?: Customer) => void;
   onShowToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -395,7 +395,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await api.createCustomer({
+      const res = await api.createCustomer({
         name: name.trim(),
         phone: phone.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -407,7 +407,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       setPhone('');
       setOpeningBalance(0);
       setNotes('');
-      onSuccess();
+      onSuccess(res.customer);
       onClose();
     } catch (err: any) {
       onShowToast(err.message || 'Failed to create customer', 'error');

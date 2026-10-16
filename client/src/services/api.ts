@@ -18,8 +18,8 @@ function getHeaders(): HeadersInit {
     'Content-Type': 'application/json',
   };
   const token = localStorage.getItem('talkledger_token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (token && token !== 'null' && token !== 'undefined' && token.trim() !== '') {
+    headers['Authorization'] = `Bearer ${token.trim()}`;
   }
   return headers;
 }
@@ -36,7 +36,17 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.error || data.message || `Request failed with status ${res.status}`);
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('talkledger_token');
+    }
+    let errorMessage = '';
+    if (Array.isArray(data.details) && data.details.length > 0) {
+      errorMessage = data.details.map((d: any) => d.message).filter(Boolean).join('; ');
+    }
+    if (!errorMessage) {
+      errorMessage = data.message || data.error || `Request failed with status ${res.status}`;
+    }
+    throw new Error(errorMessage);
   }
 
   return data as T;
@@ -111,4 +121,91 @@ export const api = {
 
   // Auth & Profile
   getMe: () => request<{ user: any }>('/auth/me'),
+
+  login: (data: { email: string; password: string }) =>
+    request<{ user: any; token: string; message: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  register: (data: { email: string; password: string; businessName: string; phone?: string; upiId?: string }) =>
+    request<{ user: any; token: string; message: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Google Gemma 2 Conversational Assistant
+  getGemmaStatus: () =>
+    request<{
+      configured: boolean;
+      provider: string;
+      model: string;
+      status: string;
+      message: string;
+      instructions: string;
+    }>('/gemma/status'),
+
+  sendGemmaChat: (prompt: string, history: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = []) =>
+    request<{
+      message: string;
+      model: string;
+      provider: string;
+      preview?: {
+        actionType: 'TRANSACTION' | 'CUSTOMER';
+        requiresConfirmation: true;
+        data: any;
+        summaryText: string;
+      } | null;
+      error?: string | null;
+    }>('/gemma/chat', {
+      method: 'POST',
+      body: JSON.stringify({ prompt, history }),
+    }),
+
+  confirmGemmaAction: (actionType: 'TRANSACTION' | 'CUSTOMER', data: any) =>
+    request<{ success: boolean; message: string; customer?: Customer; transaction?: Transaction }>(
+      '/gemma/confirm-action',
+      {
+        method: 'POST',
+        body: JSON.stringify({ actionType, data }),
+      }
+    ),
+
+  // TabPFN-3.5 Tabular Predictive Analytics
+  getTabPfnStatus: () =>
+    request<{
+      model: string;
+      developer: string;
+      license: string;
+      sdkAvailability: string;
+      configured: boolean;
+      tokenPresent: boolean;
+      endpoint: string;
+      architectureNote: string;
+    }>('/tabpfn/status'),
+
+  getTabPfnForecast: () =>
+    request<{
+      engine: string;
+      isModelGenerated: boolean;
+      modelLicense: string;
+      dataPeriod: { start: string | null; end: string | null; totalTransactionsAnalyzed: number };
+      disclaimer: string;
+      forecasts: Array<{
+        anonymousId: string;
+        actualCustomerName: string;
+        outstandingBalancePaise: number;
+        outstandingBalanceFormatted: string;
+        repaymentProbabilityPct: number;
+        estimatedCollectionDays: number;
+        riskCategory: 'LOW' | 'MEDIUM' | 'HIGH';
+        confidenceInterval: string;
+      }>;
+      summary: {
+        expectedCollectionsNext30DaysPaise: number;
+        expectedCollectionsNext30DaysFormatted: string;
+        highRiskOutstandingPaise: number;
+        highRiskOutstandingFormatted: string;
+      };
+    }>('/tabpfn/forecast'),
 };

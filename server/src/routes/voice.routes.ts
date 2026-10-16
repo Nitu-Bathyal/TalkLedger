@@ -11,7 +11,8 @@ voiceRouter.use(authenticateToken);
 // AI / NLP Voice Parsing endpoint
 voiceRouter.post('/parse', validateBody(VoiceParseSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const result = await VoiceParserService.parseVoiceTranscript(req.user!.id, req.body.transcript);
+    const transcript = (req.body.transcript || req.body.text || '').trim();
+    const result = await VoiceParserService.parseVoiceTranscript(req.user!.id, transcript);
     res.json(result);
   } catch (err) {
     next(err);

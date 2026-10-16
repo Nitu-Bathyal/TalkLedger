@@ -73,17 +73,28 @@ export class VoiceParserService {
     const hasPaymentKeyword = paymentKeywords.some((k) => new RegExp(`\\b${k}\\b`, 'i').test(text));
     const hasCreditKeyword = creditKeywords.some((k) => new RegExp(`\\b${k}\\b`, 'i').test(text));
 
-    if (hasPaymentKeyword && !hasCreditKeyword) {
+    if (
+      text.includes('on credit') ||
+      text.includes('in credit') ||
+      text.includes('udhaar') ||
+      text.includes('owes') ||
+      text.includes('borrowed') ||
+      text.includes('took')
+    ) {
+      transactionType = 'CREDIT';
+    } else if (
+      text.includes('paid') ||
+      text.includes('payment received') ||
+      text.includes('cash received') ||
+      text.includes('cleared')
+    ) {
+      transactionType = 'PAYMENT';
+    } else if (hasPaymentKeyword && !hasCreditKeyword) {
       transactionType = 'PAYMENT';
     } else if (hasCreditKeyword && !hasPaymentKeyword) {
       transactionType = 'CREDIT';
     } else if (hasPaymentKeyword && hasCreditKeyword) {
-      // Prioritize "paid" if phrase starts or explicitly states paid
-      if (text.includes('paid') || text.includes('payment received')) {
-        transactionType = 'PAYMENT';
-      } else {
-        transactionType = 'CREDIT';
-      }
+      transactionType = text.includes('paid') ? 'PAYMENT' : 'CREDIT';
     } else {
       ambiguityIndicators.push('Transaction type (Credit vs Payment) was not clearly stated.');
     }
@@ -146,21 +157,22 @@ export class VoiceParserService {
       matchedCustomerId = candidates[0].id;
       customerName = candidates[0].name;
     } else if (candidates.length > 1) {
-      // Check if one is a full match
-      const exact = candidates.find((c) => text.includes(c.name.toLowerCase()));
-      if (exact) {
-        matchedCustomerId = exact.id;
-        customerName = exact.name;
+      // Check if exactly one has a full name match
+      const exactMatches = candidates.filter((c) => text.includes(c.name.toLowerCase()));
+      if (exactMatches.length === 1) {
+        matchedCustomerId = exactMatches[0].id;
+        customerName = exactMatches[0].name;
       } else {
-        ambiguityIndicators.push(`Multiple customers matched: ${candidates.map((c) => c.name).join(', ')}.`);
-        customerName = candidates[0].name;
+        ambiguityIndicators.push(`Multiple customers matched: ${candidates.map((c) => c.name).join(', ')}. Please select the intended customer.`);
+        matchedCustomerId = null; // Do not silently select an incorrect customer
+        customerName = null;
       }
     } else {
       // Extract hypothetical name from phrases like "Aarav Sharma bought..." or "...from Ramesh Kumar"
       const extractedExtName = this.extractNameFromPhrase(transcript);
       if (extractedExtName) {
         customerName = extractedExtName;
-        ambiguityIndicators.push(`"${extractedExtName}" is not yet registered in your customer ledger.`);
+        ambiguityIndicators.push(`"${extractedExtName}" is not yet registered in your customer ledger. Please add them first.`);
       } else {
         ambiguityIndicators.push('Customer name could not be identified from speech.');
       }
@@ -188,7 +200,7 @@ export class VoiceParserService {
     const clarificationNeeded = ambiguityIndicators.length > 0 || !matchedCustomerId || !extractedAmount || !transactionType;
     let confidence: 'HIGH' | 'MEDIUM' | 'LOW' = 'HIGH';
     if (clarificationNeeded) {
-      confidence = (!extractedAmount || !transactionType) ? 'LOW' : 'MEDIUM';
+      confidence = (!extractedAmount || !transactionType || !matchedCustomerId) ? 'LOW' : 'MEDIUM';
     }
 
     let clarificationReason: string | null = null;
@@ -310,12 +322,19 @@ export class VoiceParserService {
   private static extractDescription(transcript: string, name: string | null, _amount: number | null): string {
     let desc = transcript;
     if (name) {
-      desc = desc.replace(new RegExp(name, 'gi'), '');
+      desc = desc.replace(new RegExp(name, 'gi'), ' ');
     }
-    // Remove boilerplate words
-    desc = desc.replace(/\b(record|payment|bought|credit|rupees?|rs\.?|inr|worth|paid|has|owes|next friday|tomorrow)\b/gi, '').trim();
-    // Remove digits and symbols
-    desc = desc.replace(/[₹\d,.]+/g, '').replace(/\s{2,}/g, ' ').trim();
+    // Remove boilerplate and financial action words
+    desc = desc.replace(
+      /\b(record|payment|bought|credit|udhaar|rupees?|rs\.?|inr|worth|paid|has|owes|took|received|next friday|tomorrow|next week|in cash|via upi|by cash|cash|upi)\b/gi,
+      ' '
+    );
+    // Remove currency numbers and symbols
+    desc = desc.replace(/[₹\d,.]+/g, ' ');
+    // Remove leading and trailing prepositions/conjunctions
+    desc = desc.replace(/^\s*(?:for|of|on|in|from|to|with|and)\b/gi, ' ');
+    desc = desc.replace(/\b(?:for|of|on|in|from|to|with|and)\s*$/gi, ' ');
+    desc = desc.replace(/\s{2,}/g, ' ').trim();
     return desc.length > 2 ? desc.charAt(0).toUpperCase() + desc.slice(1) : 'Voice entry';
   }
 

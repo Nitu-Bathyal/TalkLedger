@@ -2,11 +2,12 @@
   "name": "talkledger-server",
   "version": "1.0.0",
   "description": "Backend API server for TalkLedger with SQLite, Prisma, and AI voice parsing",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
+    "start:prod": "prisma db push --skip-generate && node dist/src/index.js",
     "db:migrate": "prisma migrate dev --name init",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
@@ -19,6 +20,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "groq-sdk": "^1.6.0",
     "jsonwebtoken": "^9.0.2",
     "zod": "^3.23.8"
   },

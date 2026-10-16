@@ -8,14 +8,22 @@ export function validateBody(schema: z.ZodTypeAny) {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const issues = error.errors.map((e) => ({
-          field: e.path.join('.'),
+        const details = error.errors.map((e) => ({
+          field: e.path.join('.') || 'body',
           message: e.message,
         }));
+
+        // Task 3: Safe development diagnostics identifying failing route & validation field
+        // without logging passwords, tokens, or sensitive customer data
+        const safeSummary = details.map((d) => `${d.field}: ${d.message}`).join('; ');
+        console.warn(`[Validation Failed] ${req.method} ${req.originalUrl} — ${safeSummary}`);
+
+        const primaryMessage = details[0]?.message || 'Validation failed';
+
         res.status(400).json({
           error: 'Validation failed',
-          details: issues,
-          message: issues[0]?.message || 'Invalid input data',
+          message: primaryMessage,
+          details,
         });
         return;
       }

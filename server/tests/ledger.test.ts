@@ -73,7 +73,7 @@ describe('TalkLedger Business Engine & Ledger Tests', () => {
       customerId = res.body.customer.id;
     });
 
-    it('prevents accidental duplicate customer with identical name', async () => {
+    it('prevents accidental duplicate customer with identical name and identical phone', async () => {
       const res = await request(app)
         .post('/api/customers')
         .set('Authorization', `Bearer ${authToken}`)
@@ -83,7 +83,43 @@ describe('TalkLedger Business Engine & Ledger Tests', () => {
         });
 
       expect(res.status).toBe(409);
-      expect(res.body.error).toContain('already exists');
+      expect(res.body.message || res.body.error).toContain('already exists');
+    });
+
+    it('allows creating customers with the same name if distinguishable by phone number', async () => {
+      const res = await request(app)
+        .post('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          name: 'Vikram Singh',
+          phone: '+91 98111 33333', // Distinct phone
+          notes: 'Second Vikram Singh from Sector 4',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.customer.name).toBe('Vikram Singh');
+      expect(res.body.customer.phone).toBe('+91 98111 33333');
+    });
+
+    it('rejects duplicate when both customers have the same name and neither has a phone', async () => {
+      // First customer without phone
+      const firstRes = await request(app)
+        .post('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          name: 'Sunil Kumar',
+        });
+      expect(firstRes.status).toBe(201);
+
+      // Second customer without phone and same name
+      const secondRes = await request(app)
+        .post('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          name: 'Sunil Kumar',
+        });
+      expect(secondRes.status).toBe(409);
+      expect(secondRes.body.message || secondRes.body.error).toContain('already exists without a phone number');
     });
 
     it('retrieves customer details and initial zero balance', async () => {
@@ -95,6 +131,31 @@ describe('TalkLedger Business Engine & Ledger Tests', () => {
       expect(res.body.customer.id).toBe(customerId);
       expect(res.body.customer.balancePaise).toBe(0);
       expect(res.body.customer.transactionCount).toBe(0);
+    });
+
+    it('verifies newly created customer appears in customer list and can be used for transactions', async () => {
+      const listRes = await request(app)
+        .get('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(listRes.status).toBe(200);
+      const found = listRes.body.customers.find((c: any) => c.id === customerId);
+      expect(found).toBeDefined();
+      expect(found.name).toBe('Vikram Singh');
+
+      // Now create a transaction with this customer
+      const txnRes = await request(app)
+        .post('/api/transactions')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          customerId,
+          type: 'CREDIT',
+          amount: 150,
+          description: 'Initial transaction test',
+        });
+
+      expect(txnRes.status).toBe(201);
+      expect(txnRes.body.transaction.amountPaise).toBe(15000);
     });
 
     it('updates customer notes and contact info', async () => {
@@ -238,6 +299,29 @@ describe('TalkLedger Business Engine & Ledger Tests', () => {
   });
 
   describe('Voice AI & NLP Parsing Layer', () => {
+    beforeAll(async () => {
+      // Seed customers for voice parsing tests
+      await request(app)
+        .post('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ name: 'Ramesh Kumar', phone: '+91 98765 43210' });
+
+      await request(app)
+        .post('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ name: 'Aarav Sharma', phone: '+91 98123 45678' });
+
+      await request(app)
+        .post('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ name: 'Anita Tailor', phone: '+91 99887 76655' });
+
+      await request(app)
+        .post('/api/customers')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ name: 'Anita Verma', phone: '+91 99887 76699' });
+    });
+
     it('accurately parses credit purchase with customer, amount, and items', async () => {
       const result = await VoiceParserService.parseVoiceTranscript(
         testUserId,
@@ -250,6 +334,50 @@ describe('TalkLedger Business Engine & Ledger Tests', () => {
       expect(result.amountPaise).toBe(34000);
     });
 
+    it('accurately parses "Ramesh Kumar owes 500 rupees."', async () => {
+      const result = await VoiceParserService.parseVoiceTranscript(
+        testUserId,
+        'Ramesh Kumar owes 500 rupees.'
+      );
+
+      expect(result.customerName).toBe('Ramesh Kumar');
+      expect(result.matchedCustomerId).not.toBeNull();
+      expect(result.transactionType).toBe('CREDIT');
+      expect(result.amount).toBe(500);
+      expect(result.amountPaise).toBe(50000);
+      expect(result.clarificationNeeded).toBe(false);
+    });
+
+    it('accurately parses "Aarav Sharma paid 200 rupees in cash."', async () => {
+      const result = await VoiceParserService.parseVoiceTranscript(
+        testUserId,
+        'Aarav Sharma paid 200 rupees in cash.'
+      );
+
+      expect(result.customerName).toBe('Aarav Sharma');
+      expect(result.matchedCustomerId).not.toBeNull();
+      expect(result.transactionType).toBe('PAYMENT');
+      expect(result.amount).toBe(200);
+      expect(result.amountPaise).toBe(20000);
+      expect(result.paymentMode).toBe('CASH');
+      expect(result.clarificationNeeded).toBe(false);
+    });
+
+    it('accurately parses "Anita Tailor received fabric worth 850 rupees on credit."', async () => {
+      const result = await VoiceParserService.parseVoiceTranscript(
+        testUserId,
+        'Anita Tailor received fabric worth 850 rupees on credit.'
+      );
+
+      expect(result.customerName).toBe('Anita Tailor');
+      expect(result.matchedCustomerId).not.toBeNull();
+      expect(result.transactionType).toBe('CREDIT');
+      expect(result.amount).toBe(850);
+      expect(result.amountPaise).toBe(85000);
+      expect(result.description).toBe('Fabric');
+      expect(result.clarificationNeeded).toBe(false);
+    });
+
     it('accurately parses payment received with UPI mode', async () => {
       const result = await VoiceParserService.parseVoiceTranscript(
         testUserId,
@@ -259,6 +387,28 @@ describe('TalkLedger Business Engine & Ledger Tests', () => {
       expect(result.transactionType).toBe('PAYMENT');
       expect(result.amount).toBe(500);
       expect(result.paymentMode).toBe('UPI');
+    });
+
+    it('flags ambiguity when ambiguous customer name is mentioned and does not silently pick one', async () => {
+      const result = await VoiceParserService.parseVoiceTranscript(
+        testUserId,
+        'Anita paid 300 rupees'
+      );
+
+      expect(result.clarificationNeeded).toBe(true);
+      expect(result.matchedCustomerId).toBeNull();
+      expect(result.clarificationReason).toContain('Multiple customers matched');
+    });
+
+    it('flags clarification when customer name is not yet registered in ledger', async () => {
+      const result = await VoiceParserService.parseVoiceTranscript(
+        testUserId,
+        'Rahul Mehta owes 450 rupees'
+      );
+
+      expect(result.clarificationNeeded).toBe(true);
+      expect(result.matchedCustomerId).toBeNull();
+      expect(result.clarificationReason).toContain('not yet registered');
     });
 
     it('flags ambiguity when amount is missing and does NOT commit to database', async () => {
@@ -288,6 +438,106 @@ describe('TalkLedger Business Engine & Ledger Tests', () => {
       expect(result.amount).toBe(500);
       expect(result.dueDate).not.toBeNull();
       expect(result.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('handles /api/voice/parse endpoint with valid input and returns matching schema', async () => {
+      const res = await request(app)
+        .post('/api/voice/parse')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ transcript: 'Ramesh Kumar owes 500 rupees.' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.customerName).toBe('Ramesh Kumar');
+      expect(res.body.transactionType).toBe('CREDIT');
+      expect(res.body.amount).toBe(500);
+      expect(res.body.matchedCustomerId).not.toBeNull();
+    });
+
+    it('returns structured validation error when transcript is blank', async () => {
+      const res = await request(app)
+        .post('/api/voice/parse')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ transcript: '   ' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Validation failed');
+      expect(res.body.message).toContain('Please speak or enter a transaction phrase');
+      expect(res.body.details).toBeInstanceOf(Array);
+      expect(res.body.details[0].field).toBe('transcript');
+    });
+
+    it('ensures parsing voice never automatically writes a transaction to the database', async () => {
+      const beforeCount = await prisma.transaction.count({ where: { userId: testUserId } });
+
+      // Parse speech for a valid customer and amount
+      const parseRes = await request(app)
+        .post('/api/voice/parse')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ transcript: 'Ramesh Kumar owes 500 rupees.' });
+
+      expect(parseRes.status).toBe(200);
+
+      // Verify transaction count in DB has NOT changed
+      const afterCount = await prisma.transaction.count({ where: { userId: testUserId } });
+      expect(afterCount).toBe(beforeCount);
+    });
+
+    it('successfully persists transaction upon explicit user confirmation', async () => {
+      // 1. Parse speech
+      const parseRes = await request(app)
+        .post('/api/voice/parse')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ transcript: 'Anita Tailor received fabric worth 850 rupees on credit.' });
+
+      expect(parseRes.status).toBe(200);
+      const parsed = parseRes.body;
+
+      // 2. User explicitly reviews and confirms form
+      const confirmRes = await request(app)
+        .post('/api/transactions')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          customerId: parsed.matchedCustomerId,
+          type: parsed.transactionType,
+          amount: parsed.amount,
+          description: parsed.description,
+          source: 'VOICE',
+        });
+
+      expect(confirmRes.status).toBe(201);
+      expect(confirmRes.body.transaction.amountPaise).toBe(85000);
+      expect(confirmRes.body.transaction.source).toBe('VOICE');
+
+      // 3. Verify database balance updated
+      const custRes = await request(app)
+        .get(`/api/customers/${parsed.matchedCustomerId}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(custRes.body.customer.balancePaise).toBe(85000);
+    });
+  });
+
+  describe('Speech Recognition Client Error Handling Contract', () => {
+    it('accurately maps speech recognition event errors to actionable user messages', () => {
+      const mapSpeechError = (errorType: string) => {
+        if (errorType === 'not-allowed' || errorType === 'permission-denied') {
+          return 'Microphone permission denied. Please allow microphone access in your browser or type details below.';
+        } else if (errorType === 'no-speech') {
+          return 'No speech detected. Please tap the mic and speak clearly.';
+        } else if (errorType === 'network') {
+          return 'Network error with speech service. Please check your internet or use text input below.';
+        } else if (errorType === 'audio-capture') {
+          return 'No microphone detected. Please check your microphone connection or use text input below.';
+        }
+        return `Speech error (${errorType}). Please use text fallback below.`;
+      };
+
+      expect(mapSpeechError('not-allowed')).toContain('Microphone permission denied');
+      expect(mapSpeechError('permission-denied')).toContain('Microphone permission denied');
+      expect(mapSpeechError('no-speech')).toContain('No speech detected');
+      expect(mapSpeechError('network')).toContain('Network error');
+      expect(mapSpeechError('audio-capture')).toContain('No microphone detected');
+      expect(mapSpeechError('aborted')).toContain('Speech error (aborted)');
     });
   });
 

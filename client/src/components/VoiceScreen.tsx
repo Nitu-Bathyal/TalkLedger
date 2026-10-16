@@ -23,28 +23,14 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
   const [hasSpeechSupport, setHasSpeechSupport] = useState(true);
 
   // Extracted preview state
-  const [preview, setPreview] = useState<VoiceParseResult | null>({
-    customerName: 'Ramesh Kumar',
-    matchedCustomerId: customers[0]?.id || null,
-    transactionType: 'CREDIT',
-    amount: 500,
-    amountPaise: 50000,
-    description: 'Weekly ration & supplies',
-    dueDate: new Date().toISOString().split('T')[0],
-    paymentMode: null,
-    confidence: 'HIGH',
-    ambiguityIndicators: [],
-    clarificationNeeded: false,
-    clarificationReason: null,
-    rawTranscript: 'Ramesh Kumar owes 500 rupees and will pay next Friday.',
-  });
+  const [preview, setPreview] = useState<VoiceParseResult | null>(null);
 
-  const [, setFormCustName] = useState('Ramesh Kumar');
-  const [formCustomerId, setFormCustomerId] = useState(customers[0]?.id || '');
-  const [formAmount, setFormAmount] = useState<number | ''>(500);
+  const [, setFormCustName] = useState('');
+  const [formCustomerId, setFormCustomerId] = useState('');
+  const [formAmount, setFormAmount] = useState<number | ''>('');
   const [formType, setFormType] = useState<'CREDIT' | 'PAYMENT'>('CREDIT');
   const [formDueDate, setFormDueDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formDesc, setFormDesc] = useState('Weekly ration & supplies');
+  const [formDesc, setFormDesc] = useState('');
 
   const recognitionRef = useRef<any>(null);
 
@@ -81,20 +67,27 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
   };
 
   const handleProcessTranscript = async (transcript: string) => {
-    setRawTranscript(transcript);
+    const clean = transcript.trim();
+    if (!clean) {
+      onShowToast('Please speak or type a transaction phrase.', 'info');
+      return;
+    }
+
+    setRawTranscript(clean);
+    setManualFallbackText(clean); // Preserve in fallback box for easy editing/retry
     setIsProcessing(true);
-    setStatusText(`Processing speech: "${transcript}"...`);
+    setStatusText(`Processing speech: "${clean}"...`);
 
     try {
-      const result = await api.parseVoice(transcript);
+      const result = await api.parseVoice(clean);
       updateFormFromParsedResult(result);
 
       if (result.clarificationNeeded) {
         onShowToast(result.clarificationReason || 'Review required: some details were unclear.', 'info');
-        setStatusText('Review and edit the extracted details before saving.');
+        setStatusText(result.clarificationReason || 'Review and edit the extracted details before saving.');
       } else {
         onShowToast('✓ Speech extracted! Review and confirm to save.', 'success');
-        setStatusText(`Captured: "${transcript}"`);
+        setStatusText(`Captured: "${clean}"`);
       }
     } catch (err: any) {
       onShowToast(err.message || 'Failed to process voice text', 'error');
@@ -134,21 +127,35 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
+        const transcript = event.results?.[0]?.[0]?.transcript || '';
         setIsRecording(false);
-        handleProcessTranscript(transcript);
+        setManualFallbackText(transcript);
+        if (transcript.trim()) {
+          handleProcessTranscript(transcript);
+        } else {
+          setStatusText('No speech detected. Please tap the mic and try again.');
+          onShowToast('No speech was detected. Please try again or type below.', 'info');
+        }
       };
 
       recognition.onerror = (event: any) => {
         console.warn('Speech recognition error:', event.error);
         setIsRecording(false);
-        if (event.error === 'not-allowed') {
-          setStatusText('Microphone permission denied. Please allow microphone access or use text input.');
+        if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+          setStatusText('Microphone permission denied. Please allow microphone access in your browser or type details below.');
           onShowToast('Microphone access was denied in browser permissions.', 'error');
         } else if (event.error === 'no-speech') {
           setStatusText('No speech detected. Please tap the mic and speak clearly.');
+        } else if (event.error === 'network') {
+          setStatusText('Network error with speech service. Please check your internet or use text input below.');
+          onShowToast('Speech recognition service encountered a network error.', 'error');
+        } else if (event.error === 'audio-capture') {
+          setStatusText('No microphone detected. Please check your microphone connection or use text input below.');
+          onShowToast('No microphone found on this device.', 'error');
+        } else if (event.error === 'aborted') {
+          setStatusText('Listening paused.');
         } else {
-          setStatusText(`Speech error (${event.error}). Please use text fallback.`);
+          setStatusText(`Speech error (${event.error}). Please use text fallback below.`);
         }
       };
 
@@ -296,7 +303,6 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && manualFallbackText.trim()) {
                   handleProcessTranscript(manualFallbackText);
-                  setManualFallbackText('');
                 }
               }}
               placeholder="Or type speech e.g. Ramesh Kumar owes 500 rupees..."
@@ -306,7 +312,6 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
               onClick={() => {
                 if (manualFallbackText.trim()) {
                   handleProcessTranscript(manualFallbackText);
-                  setManualFallbackText('');
                 }
               }}
               className="px-4 py-2 bg-leaf-green text-cream font-bold text-xs rounded-xl border border-ink-brown hover:bg-leaf-dark"

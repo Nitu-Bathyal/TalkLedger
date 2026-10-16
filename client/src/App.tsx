@@ -9,6 +9,8 @@ import { VoiceScreen } from './components/VoiceScreen';
 import { LedgerScreen } from './components/LedgerScreen';
 import { PaymentsScreen } from './components/PaymentsScreen';
 import { ReportsScreen } from './components/ReportsScreen';
+import { GemmaScreen } from './components/GemmaScreen';
+import { ForecastScreen } from './components/ForecastScreen';
 import {
   AddCreditModal,
   RecordPaymentModal,
@@ -130,6 +132,14 @@ export function App() {
           />
         )}
 
+        {currentTab === 'gemma' && (
+          <GemmaScreen
+            customers={customers}
+            onDataChanged={loadData}
+            onShowToast={showToast}
+          />
+        )}
+
         {currentTab === 'voice' && (
           <VoiceScreen
             customers={customers}
@@ -171,6 +181,10 @@ export function App() {
           />
         )}
 
+        {currentTab === 'forecast' && (
+          <ForecastScreen />
+        )}
+
         {currentTab === 'reports' && (
           <ReportsScreen
             customers={customers}
@@ -201,7 +215,12 @@ export function App() {
       <AddCustomerModal
         isOpen={isAddCustomerOpen}
         onClose={() => setIsAddCustomerOpen(false)}
-        onSuccess={loadData}
+        onSuccess={async (newCust?: Customer) => {
+          await loadData();
+          if (newCust?.id) {
+            setSelectedCustomerIdForLedger(newCust.id);
+          }
+        }}
         onShowToast={showToast}
       />
 

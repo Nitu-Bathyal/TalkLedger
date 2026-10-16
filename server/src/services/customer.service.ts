@@ -171,35 +171,63 @@ export class CustomerService {
     userId: string,
     input: CreateCustomerInput
   ): Promise<CustomerWithMetrics> {
-    const existing = await prisma.customer.findFirst({
-      where: {
-        userId,
-        name: { equals: input.name.trim() },
-      },
+    const trimmedName = input.name.trim();
+    const cleanPhone = input.phone?.trim() ? input.phone.trim() : null;
+    const cleanNotes = input.notes?.trim() ? input.notes.trim() : null;
+    const normInputPhone = cleanPhone ? cleanPhone.replace(/[\s\-\(\)\.]/g, '') : null;
+
+    // Check all existing customers for this user
+    const existingCustomers = await prisma.customer.findMany({
+      where: { userId },
     });
 
-    if (existing) {
-      throw new AppError(`A customer named "${input.name.trim()}" already exists in your ledger`, 409);
+    const sameNameMatches = existingCustomers.filter(
+      (c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (sameNameMatches.length > 0) {
+      // Allow customers with the same name if distinguishable by phone number
+      const duplicate = sameNameMatches.find((c) => {
+        const existingNormPhone = c.phone ? c.phone.replace(/[\s\-\(\)\.]/g, '') : null;
+        if (!normInputPhone && !existingNormPhone) return true; // both have no phone
+        if (normInputPhone && existingNormPhone && normInputPhone === existingNormPhone) return true; // identical phone
+        return false;
+      });
+
+      if (duplicate) {
+        if (!normInputPhone) {
+          throw new AppError(
+            `A customer named "${trimmedName}" already exists without a phone number. Please provide a phone number to distinguish between customers with the same name.`,
+            409
+          );
+        } else {
+          throw new AppError(
+            `A customer named "${trimmedName}" with phone number "${cleanPhone}" already exists in your ledger.`,
+            409
+          );
+        }
+      }
     }
 
     return await prisma.$transaction(async (tx) => {
       const customer = await tx.customer.create({
         data: {
           userId,
-          name: input.name.trim(),
-          phone: input.phone?.trim() || null,
-          notes: input.notes?.trim() || null,
+          name: trimmedName,
+          phone: cleanPhone,
+          notes: cleanNotes,
         },
       });
 
       // If opening balance is specified, create initial credit transaction
-      if (input.openingBalancePaise && input.openingBalancePaise > 0) {
+      const openingPaise = input.openingBalancePaise || 0;
+      if (openingPaise > 0) {
         await tx.transaction.create({
           data: {
             userId,
             customerId: customer.id,
             type: 'CREDIT',
-            amountPaise: input.openingBalancePaise,
+            amountPaise: openingPaise,
             description: 'Opening Balance',
             transactionDate: new Date(),
             source: 'MANUAL',
@@ -215,11 +243,11 @@ export class CustomerService {
         notes: customer.notes,
         createdAt: customer.createdAt.toISOString(),
         updatedAt: customer.updatedAt.toISOString(),
-        balancePaise: input.openingBalancePaise || 0,
-        totalCreditPaise: input.openingBalancePaise || 0,
+        balancePaise: openingPaise,
+        totalCreditPaise: openingPaise,
         totalPaymentPaise: 0,
-        transactionCount: input.openingBalancePaise ? 1 : 0,
-        lastActivityDate: input.openingBalancePaise ? new Date().toISOString() : null,
+        transactionCount: openingPaise > 0 ? 1 : 0,
+        lastActivityDate: openingPaise > 0 ? new Date().toISOString() : null,
         isOverdue: false,
       };
     });
@@ -241,25 +269,47 @@ export class CustomerService {
       throw new AppError('Customer not found', 404);
     }
 
-    if (input.name && input.name.trim() !== existing.name) {
-      const duplicate = await prisma.customer.findFirst({
+    const trimmedName = input.name ? input.name.trim() : existing.name;
+    const cleanPhone = input.phone !== undefined ? (input.phone?.trim() || null) : existing.phone;
+    const cleanNotes = input.notes !== undefined ? (input.notes?.trim() || null) : existing.notes;
+    const normPhone = cleanPhone ? cleanPhone.replace(/[\s\-\(\)\.]/g, '') : null;
+
+    if (
+      trimmedName.toLowerCase() !== existing.name.toLowerCase() ||
+      normPhone !== (existing.phone ? existing.phone.replace(/[\s\-\(\)\.]/g, '') : null)
+    ) {
+      const otherCustomers = await prisma.customer.findMany({
         where: {
           userId,
-          name: { equals: input.name.trim() },
           id: { not: customerId },
         },
       });
+
+      const sameNameMatches = otherCustomers.filter(
+        (c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase()
+      );
+
+      const duplicate = sameNameMatches.find((c) => {
+        const otherNormPhone = c.phone ? c.phone.replace(/[\s\-\(\)\.]/g, '') : null;
+        if (!normPhone && !otherNormPhone) return true;
+        if (normPhone && otherNormPhone && normPhone === otherNormPhone) return true;
+        return false;
+      });
+
       if (duplicate) {
-        throw new AppError(`Another customer is already named "${input.name.trim()}"`, 409);
+        throw new AppError(
+          `Another customer named "${trimmedName}" with phone number "${cleanPhone || 'None'}" already exists.`,
+          409
+        );
       }
     }
 
     const updated = await prisma.customer.update({
       where: { id: customerId },
       data: {
-        ...(input.name ? { name: input.name.trim() } : {}),
-        ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
-        ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
+        name: trimmedName,
+        phone: cleanPhone,
+        notes: cleanNotes,
       },
       include: {
         transactions: true,
