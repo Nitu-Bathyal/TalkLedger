@@ -3,8 +3,17 @@
   "version": "1.0.0",
   "description": "TalkLedger — Voice-First Digital Credit and Payment Ledger for Small Businesses",
   "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
-    "install:all": "npm --prefix server install && npm --prefix client install",
+    "postinstall": "npm --prefix server install --include=dev && npm --prefix client install --include=dev",
+    "install:all": "npm --prefix server install --include=dev && npm --prefix client install --include=dev",
     "dev": "concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
@@ -20,6 +29,7 @@
     "db:migrate:postgres": "npm --prefix server run db:migrate:postgres"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "prisma": "^5.22.0"
   }
 }

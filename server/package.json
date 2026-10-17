@@ -3,19 +3,22 @@
   "version": "1.0.0",
   "description": "Backend API server for TalkLedger with SQLite, Prisma, and AI voice parsing",
   "main": "dist/src/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "node scripts/switch-db.mjs postgres && prisma generate && tsc",
+    "build": "node scripts/switch-db.mjs postgres && npx prisma generate && npx tsc",
     "start": "node dist/src/index.js",
-    "start:prod": "prisma db push --skip-generate && node dist/src/index.js",
+    "start:prod": "npx prisma db push --skip-generate && node dist/src/index.js",
     "db:migrate": "prisma migrate dev --name init",
-    "db:push": "prisma db push",
-    "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:switch:sqlite": "node scripts/switch-db.mjs sqlite && prisma generate",
-    "db:switch:postgres": "node scripts/switch-db.mjs postgres && prisma generate",
-    "db:migrate:postgres": "node scripts/switch-db.mjs postgres && prisma generate && tsx scripts/migrate-sqlite-to-postgres.ts",
-    "pretest": "node scripts/sync-db-provider.mjs && prisma generate",
+    "db:push": "npx prisma db push",
+    "db:generate": "npx prisma generate",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:switch:sqlite": "node scripts/switch-db.mjs sqlite && npx prisma generate",
+    "db:switch:postgres": "node scripts/switch-db.mjs postgres && npx prisma generate",
+    "db:migrate:postgres": "node scripts/switch-db.mjs postgres && npx prisma generate && npx tsx scripts/migrate-sqlite-to-postgres.ts",
+    "pretest": "node scripts/sync-db-provider.mjs && npx prisma generate",
     "test": "vitest run"
   },
   "dependencies": {
