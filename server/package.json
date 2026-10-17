@@ -5,7 +5,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "node scripts/switch-db.mjs postgres && prisma generate && tsc",
     "start": "node dist/src/index.js",
     "start:prod": "prisma db push --skip-generate && node dist/src/index.js",
     "db:migrate": "prisma migrate dev --name init",
@@ -14,7 +14,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:switch:sqlite": "node scripts/switch-db.mjs sqlite && prisma generate",
     "db:switch:postgres": "node scripts/switch-db.mjs postgres && prisma generate",
-    "db:migrate:postgres": "tsx scripts/migrate-sqlite-to-postgres.ts",
+    "db:migrate:postgres": "node scripts/switch-db.mjs postgres && prisma generate && tsx scripts/migrate-sqlite-to-postgres.ts",
     "pretest": "node scripts/sync-db-provider.mjs && prisma generate",
     "test": "vitest run"
   },

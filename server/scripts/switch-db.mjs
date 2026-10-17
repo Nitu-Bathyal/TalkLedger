@@ -19,6 +19,6 @@ if (target === 'sqlite') {
   fs.copyFileSync(source, dest);
   console.log('[TalkLedger DB] Configured prisma/schema.prisma for PostgreSQL provider.');
 } else {
-  console.error('[TalkLedger DB] Error: Invalid provider target. Usage: node scripts/switch-db.js [sqlite|postgres]');
+  console.error('[TalkLedger DB] Error: Invalid provider target. Usage: node scripts/switch-db.mjs [sqlite|postgres]');
   process.exit(1);
 }

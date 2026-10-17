@@ -1,10 +1,31 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
+import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const serverDir = path.resolve(__dirname, '..');
+
+// Load environment from server/.env if present
+dotenv.config({ path: path.join(serverDir, '.env') });
+
+// Target PostgreSQL connection string
+const targetUrl = process.argv[2] || process.env.TARGET_DATABASE_URL || process.env.DATABASE_URL;
+
+if (!targetUrl || (!targetUrl.startsWith('postgresql://') && !targetUrl.startsWith('postgres://'))) {
+  console.error('[Migration Error] A valid PostgreSQL connection string is required.');
+  console.error('[Migration Error] Received:', targetUrl ? `${targetUrl.substring(0, 12)}...` : '(undefined)');
+  console.error('\nUsage:');
+  console.error('  1. Set DATABASE_URL in server/.env with your Neon connection string:');
+  console.error('     DATABASE_URL="postgresql://user:pass@ep-xyz.neon.tech/talkledger?sslmode=require"');
+  console.error('     npm run db:migrate:postgres');
+  console.error('\n  2. Or pass it directly as a CLI argument:');
+  console.error('     npm run db:migrate:postgres -- "postgresql://user:pass@ep-xyz.neon.tech/talkledger?sslmode=require"\n');
+  process.exit(1);
+}
 
 // Locate the verified snapshot
 const defaultSnapshotPath = path.resolve(__dirname, '../../backups/sqlite_snapshot_20261017.json');
@@ -15,7 +36,7 @@ const snapshotPath = fs.existsSync(defaultSnapshotPath)
   : (fs.existsSync(scratchSnapshotPath) ? scratchSnapshotPath : null);
 
 if (!snapshotPath) {
-  console.error('[Migration] Error: Could not find verified SQLite snapshot JSON file.');
+  console.error('[Migration Error] Could not find verified SQLite snapshot JSON file.');
   process.exit(1);
 }
 
@@ -25,8 +46,25 @@ const snapshot = JSON.parse(snapshotRaw);
 console.log(`[Migration] Loaded snapshot from: ${snapshotPath}`);
 console.log(`[Migration] Source inventory: ${snapshot.counts.users} Users, ${snapshot.counts.customers} Customers, ${snapshot.counts.transactions} Transactions.`);
 
-// Initialize Prisma client with current DATABASE_URL
-const prisma = new PrismaClient();
+// Ensure target database tables exist before importing records
+console.log('[Migration] Ensuring target PostgreSQL schema is initialized via prisma db push...');
+try {
+  execSync('npx prisma db push --skip-generate', {
+    cwd: serverDir,
+    env: { ...process.env, DATABASE_URL: targetUrl },
+    stdio: 'inherit',
+  });
+} catch {
+  console.error('[Migration Error] Failed to initialize PostgreSQL tables with prisma db push.');
+  process.exit(1);
+}
+
+// Initialize Prisma client with target database URL
+const prisma = new PrismaClient({
+  datasources: {
+    db: { url: targetUrl },
+  },
+});
 
 async function runMigration() {
   try {
