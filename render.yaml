@@ -10,11 +10,8 @@ services:
     name: talkledger
     runtime: node
     branch: master
-    # PLAN SELECTION NOTE:
-    # Persistent disks (disk:) require Render's Starter plan ($7/mo instance + $0.25/GB/mo disk).
-    # If deploying on Render Free Tier: Remove the 'disk' block below and set DATABASE_URL
-    # to a free Render PostgreSQL database (or note that SQLite resets on container restart).
-    plan: starter
+    # Render Free Web Service (No credit card required, 750 free instance hours/month)
+    plan: free
     region: oregon
     buildCommand: npm run install:all && npm run build
     startCommand: npm run start:prod
@@ -26,22 +23,18 @@ services:
         value: 10000
       - key: JWT_SECRET
         generateValue: true
-      # Production SQLite database path on mounted persistent disk:
+      # External Neon PostgreSQL Free database URL (Permanent free tier, no card required)
+      # Configure this variable in the Render Dashboard with your Neon connection string:
+      # e.g. postgresql://user:password@ep-xyz.neon.tech/talkledger?sslmode=require
       - key: DATABASE_URL
-        value: file:/var/data/talkledger.db
+        sync: false
 
-      # Google Gemma 2 AI Configuration (Groq LPU / Hugging Face)
+      # Google Gemma 2 AI Configuration (Groq LPU / Hugging Face) - Optional
       - key: GROQ_API_KEY
         sync: false
       - key: GEMMA_MODEL
         value: gemma2-9b-it
 
-      # Prior Labs TabPFN-3.5 API Token (Optional)
+      # Prior Labs TabPFN-3.5 API Token - Optional
       - key: TABPFN_API_KEY
         sync: false
-
-    # Persistent disk for production SQLite database persistence across deploys:
-    disk:
-      name: talkledger-data
-      mountPath: /var/data
-      sizeGB: 1

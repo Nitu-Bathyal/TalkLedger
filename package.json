@@ -14,7 +14,10 @@
     "test": "npm --prefix server test",
     "db:generate": "npm --prefix server run db:generate",
     "db:push": "npm --prefix server run db:push",
-    "db:seed": "npm --prefix server run db:seed"
+    "db:seed": "npm --prefix server run db:seed",
+    "db:switch:sqlite": "npm --prefix server run db:switch:sqlite",
+    "db:switch:postgres": "npm --prefix server run db:switch:postgres",
+    "db:migrate:postgres": "npm --prefix server run db:migrate:postgres"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

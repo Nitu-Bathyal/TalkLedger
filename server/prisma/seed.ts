@@ -63,6 +63,14 @@ async function main() {
     },
   });
 
+  const vikas = await prisma.customer.create({
+    data: {
+      userId: user.id,
+      name: 'Vikas Sharma',
+      phone: '+91 98000 00000',
+    },
+  });
+
   const now = new Date();
   const daysAgo = (days: number, hours = 10) => {
     const d = new Date(now);
@@ -180,7 +188,7 @@ async function main() {
     ],
   });
 
-  console.log('[Seed] Database seeded with 4 customers and 8 ledger transactions.');
+  console.log('[Seed] Database seeded with 5 customers and 8 ledger transactions.');
 }
 
 main()

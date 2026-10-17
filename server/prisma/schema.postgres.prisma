@@ -1,0 +1,72 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  businessName String
+  phone        String?
+  upiId        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  customers    Customer[]
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+}
+
+model Customer {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  phone        String?
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+
+  @@index([userId, name])
+}
+
+model Transaction {
+  id                    String       @id @default(uuid())
+  userId                String
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerId            String
+  customer              Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type                  String       // 'CREDIT', 'PAYMENT', 'REVERSAL'
+  amountPaise           Int          // Integer paise (e.g., 50000 = ₹500.00)
+  description           String?
+  paymentMode           String?      // 'CASH', 'UPI', 'BANK_TRANSFER', 'OTHER'
+  transactionDate       DateTime     @default(now())
+  dueDate               DateTime?
+  source                String       @default("MANUAL") // 'MANUAL', 'VOICE'
+  reversedAt            DateTime?
+  reversalReason        String?
+  originalTransactionId String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([userId, transactionDate])
+  @@index([customerId, transactionDate])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  entityType String
+  entityId   String
+  details    String?  // JSON stringified metadata
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

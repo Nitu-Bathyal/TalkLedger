@@ -13,6 +13,13 @@ build/
 dev.db
 dev.db-journal
 
+# Database backups and snapshots
+backups/
+*.backup
+*.backup_*
+*snapshot*.json
+data_snapshot.json
+
 # Environment secrets
 .env
 .env.local

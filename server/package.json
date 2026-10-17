@@ -12,6 +12,10 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:switch:sqlite": "node scripts/switch-db.mjs sqlite && prisma generate",
+    "db:switch:postgres": "node scripts/switch-db.mjs postgres && prisma generate",
+    "db:migrate:postgres": "tsx scripts/migrate-sqlite-to-postgres.ts",
+    "pretest": "node scripts/sync-db-provider.mjs && prisma generate",
     "test": "vitest run"
   },
   "dependencies": {
