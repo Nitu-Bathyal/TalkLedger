@@ -2,11 +2,13 @@ import { execSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { createRequire } from 'module';
 import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const serverDir = path.resolve(__dirname, '..');
+const require = createRequire(import.meta.url);
 
 // Load environment from .env if present
 dotenv.config({ path: path.join(serverDir, '.env') });
@@ -23,10 +25,24 @@ const dbUrl = process.env.DATABASE_URL;
 const isPostgres = dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://');
 console.log(`[TalkLedger Startup] Detected database provider: ${isPostgres ? 'PostgreSQL' : 'SQLite'}`);
 
+// Resolve Prisma CLI directly from node_modules (monorepo hoisted)
+let prismaBin = null;
+try {
+  prismaBin = require.resolve('prisma');
+} catch {
+  prismaBin = 'npx prisma';
+}
+const prismaCmd = prismaBin.endsWith('.js') ? `node "${prismaBin}"` : prismaBin;
+const schemaPath = path.join(serverDir, 'prisma', 'schema.prisma');
+
 // 2. Sync schema.prisma to match DATABASE_URL provider
 try {
   console.log('[TalkLedger Startup] Syncing database schema provider...');
-  execSync('node scripts/sync-db-provider.mjs', { cwd: serverDir, stdio: 'inherit' });
+  execSync('node scripts/sync-db-provider.mjs', {
+    cwd: serverDir,
+    stdio: 'inherit',
+    env: process.env,
+  });
 } catch (err) {
   console.warn('[TalkLedger Startup] Warning: Provider sync encountered an issue:', err.message);
 }
@@ -34,7 +50,11 @@ try {
 // 3. Generate Prisma Client to match current schema
 try {
   console.log('[TalkLedger Startup] Generating Prisma Client...');
-  execSync('npx prisma generate', { cwd: serverDir, stdio: 'inherit' });
+  execSync(`${prismaCmd} generate --schema="${schemaPath}"`, {
+    cwd: serverDir,
+    stdio: 'inherit',
+    env: process.env,
+  });
 } catch (err) {
   console.warn('[TalkLedger Startup] Warning: Prisma generate encountered an issue:', err.message);
 }
@@ -42,14 +62,17 @@ try {
 // 4. Synchronize database schema tables
 try {
   console.log('[TalkLedger Startup] Synchronizing database tables with prisma db push...');
-  execSync('npx prisma db push --skip-generate --accept-data-loss', {
+  execSync(`${prismaCmd} db push --schema="${schemaPath}" --skip-generate --accept-data-loss`, {
     cwd: serverDir,
     stdio: 'inherit',
-    timeout: 45000,
+    env: process.env,
+    timeout: 60000,
   });
   console.log('[TalkLedger Startup] Database tables synchronized successfully.');
 } catch (err) {
-  console.warn('[TalkLedger Startup] Database push notice: table synchronization failed or timed out. Server will continue startup.');
+  console.error('[TalkLedger Startup] Database push error:', err.message);
+  if (err.stdout) console.error('[TalkLedger Startup] stdout:', err.stdout.toString());
+  if (err.stderr) console.error('[TalkLedger Startup] stderr:', err.stderr.toString());
 }
 
 // 5. Seed sample store data if database is empty
@@ -61,7 +84,11 @@ try {
     const userCount = await tempPrisma.user.count();
     if (userCount === 0) {
       console.log('[TalkLedger Startup] Empty database detected. Seeding sample store data...');
-      execSync(`node "${seedJsPath}"`, { cwd: serverDir, stdio: 'inherit' });
+      execSync(`node "${seedJsPath}"`, {
+        cwd: serverDir,
+        stdio: 'inherit',
+        env: process.env,
+      });
       console.log('[TalkLedger Startup] Sample store data seeded successfully.');
     } else {
       console.log(`[TalkLedger Startup] Database already populated with ${userCount} store user account(s).`);
