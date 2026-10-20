@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { DashboardService } from '../services/dashboard.service.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../db.js';
+import { ensureDatabaseReady } from '../db-init.js';
 
 export const dashboardRouter = Router();
 
@@ -13,13 +14,20 @@ dashboardRouter.get('/health', async (_req, res) => {
   try {
     await prisma.user.findFirst({ select: { id: true }, take: 1 });
   } catch (err: any) {
-    dbStatus = 'disconnected';
-    if (!process.env.DATABASE_URL) {
-      dbMessage = 'DATABASE_URL is not configured';
-    } else if (err.code === 'P2021' || err.code === 'P2022') {
-      dbMessage = 'Database tables not initialized (run prisma db push)';
+    // Attempt self-heal on-demand
+    const healed = await ensureDatabaseReady();
+    if (healed) {
+      dbStatus = 'connected';
+      dbMessage = 'Database connection verified (auto-initialized)';
     } else {
-      dbMessage = 'Database connection unavailable';
+      dbStatus = 'disconnected';
+      if (!process.env.DATABASE_URL) {
+        dbMessage = 'DATABASE_URL is not configured';
+      } else if (err.code === 'P2021' || err.code === 'P2022') {
+        dbMessage = 'Database tables not initialized (auto-initialization in progress)';
+      } else {
+        dbMessage = `Database unavailable (${err.code || 'unknown'})`;
+      }
     }
   }
 

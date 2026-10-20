@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "node scripts/sync-db-provider.mjs && npx prisma generate && npx tsc",
-    "start": "node dist/src/index.js",
+    "start": "node scripts/start-production.mjs",
     "start:prod": "node scripts/start-production.mjs",
     "db:migrate": "prisma migrate dev --name init",
     "db:push": "npx prisma db push",
