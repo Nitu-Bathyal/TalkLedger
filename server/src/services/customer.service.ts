@@ -77,14 +77,6 @@ export class CustomerService {
     const customers = await prisma.customer.findMany({
       where: {
         userId,
-        ...(options?.search
-          ? {
-              OR: [
-                { name: { contains: options.search } },
-                { phone: { contains: options.search } },
-              ],
-            }
-          : {}),
       },
       include: {
         transactions: {
@@ -101,7 +93,7 @@ export class CustomerService {
       orderBy: { name: 'asc' },
     });
 
-    const results: CustomerWithMetrics[] = customers.map((c) => {
+    let results: CustomerWithMetrics[] = customers.map((c) => {
       const metrics = this.computeMetrics(c.transactions);
       return {
         id: c.id,
@@ -114,6 +106,15 @@ export class CustomerService {
         ...metrics,
       };
     });
+
+    if (options?.search && options.search.trim() !== '') {
+      const q = options.search.trim().toLowerCase();
+      results = results.filter((c) => {
+        const matchName = c.name.toLowerCase().includes(q);
+        const matchPhone = c.phone ? c.phone.toLowerCase().includes(q) : false;
+        return matchName || matchPhone;
+      });
+    }
 
     if (options?.filter === 'pending') {
       return results.filter((c) => c.balancePaise > 0);

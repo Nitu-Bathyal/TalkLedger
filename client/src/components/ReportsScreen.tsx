@@ -19,7 +19,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   const [hasQueried, setHasQueried] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const runReport = async () => {
+  const runReport = async (silent: boolean = false) => {
     setLoading(true);
     setHasQueried(true);
     try {
@@ -31,13 +31,21 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
         includeReversed: true,
       });
       setTransactions(res.transactions);
-      onShowToast(`Report generated with ${res.transactions.length} records.`, 'info');
+      if (!silent) {
+        onShowToast(`Report generated with ${res.transactions.length} records.`, 'info');
+      }
     } catch (err: any) {
-      onShowToast(err.message || 'Failed to generate report', 'error');
+      if (!silent) {
+        onShowToast(err.message || 'Failed to generate report', 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    runReport(true);
+  }, []);
 
   const exportCSV = () => {
     if (transactions.length === 0) {
@@ -153,7 +161,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
 
         <div className="flex justify-end pt-2">
           <button
-            onClick={runReport}
+            onClick={() => runReport()}
             disabled={loading}
             className="px-5 py-2.5 bg-leaf-green text-cream font-extrabold text-sm border-2 border-ink-brown rounded-xl shadow-bahi-sm hover:bg-leaf-dark active:translate-y-0.5"
           >

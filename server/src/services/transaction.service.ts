@@ -33,9 +33,9 @@ export class TransactionService {
       // 2. If it's a payment, check if it exceeds current outstanding balance
       if (input.type === 'PAYMENT') {
         const metrics = CustomerService.computeMetrics(customer.transactions);
-        if (metrics.balancePaise <= 0) {
+        if (metrics.balancePaise <= 0 && !input.allowOverpayment) {
           throw new AppError(
-            `Customer ${customer.name} has no outstanding balance (${formatINR(0)}). A payment cannot be recorded for a settled customer.`,
+            `Customer ${customer.name} has no outstanding balance (${formatINR(0)}). A payment cannot be recorded for a settled customer unless advance credit is confirmed.`,
             400
           );
         }

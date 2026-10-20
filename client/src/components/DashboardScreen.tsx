@@ -5,6 +5,8 @@ import { ScreenTab } from './Navbar';
 interface DashboardScreenProps {
   summary: DashboardSummary | null;
   loading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onNavigate: (tab: ScreenTab) => void;
   onOpenAddCredit: () => void;
   onOpenRecordPayment: () => void;
@@ -16,6 +18,8 @@ interface DashboardScreenProps {
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   summary,
   loading,
+  error,
+  onRetry,
   onNavigate,
   onOpenAddCredit,
   onOpenRecordPayment,
@@ -26,11 +30,34 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'CREDIT' | 'PAYMENT'>('all');
 
-  if (loading || !summary) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
         <div className="w-12 h-12 border-4 border-leaf-green border-t-transparent rounded-full animate-spin"></div>
         <p className="font-bold text-ink-muted">Loading your store ledger...</p>
+      </div>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="bg-white p-8 rounded-2xl border-2 border-tomato-red/30 shadow-bahi max-w-xl mx-auto my-12 text-center space-y-4">
+        <div className="w-16 h-16 bg-tomato-red/10 text-tomato-red rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+          <i className="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h2 className="text-xl font-extrabold text-ink-brown">Unable to Load Ledger Data</h2>
+        <p className="text-sm text-ink-muted">
+          {error || 'The server could not provide ledger records. If deploying on Render, ensure DATABASE_URL is configured in your Render dashboard.'}
+        </p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-6 py-2.5 bg-leaf-green hover:bg-leaf-green/90 text-white font-bold rounded-xl shadow-bahi transition inline-flex items-center gap-2 text-sm"
+          >
+            <i className="fa-solid fa-rotate-right"></i>
+            Retry Connection
+          </button>
+        )}
       </div>
     );
   }

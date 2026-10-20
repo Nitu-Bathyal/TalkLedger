@@ -30,6 +30,12 @@ export const PaymentsScreen: React.FC<PaymentsScreenProps> = ({
   const [payNote, setPayNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  React.useEffect(() => {
+    if (!payCustId && customers.length > 0) {
+      setPayCustId(customers[0].id);
+    }
+  }, [customers, payCustId]);
+
   const selectedCustomer = customers.find((c) => c.id === payCustId);
 
   const filteredCustomers = customers.filter((c) => {

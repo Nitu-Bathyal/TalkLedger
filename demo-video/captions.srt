@@ -1,0 +1,23 @@
+1
+00:00:00,400 --> 00:00:07,800
+For millions of small shopkeepers across India, customer credit is still trapped in paper notebooks.
+
+2
+00:00:08,500 --> 00:00:15,000
+Meet TalkLedger: a voice-first digital ledger blending traditional bahi-khata with modern web speed.
+
+3
+00:00:16,500 --> 00:00:24,000
+Every customer balance is transparent. Track who owes what and view detailed transaction histories.
+
+4
+00:00:29,500 --> 00:00:36,000
+Just speak naturally in Hindi or English. TalkLedger extracts details with mandatory review before saving.
+
+5
+00:00:41,500 --> 00:00:50,000
+Built with React, Vite, Express, and Prisma — open source with 42 automated tests passing.
+
+6
+00:00:51,500 --> 00:00:58,500
+Experience TalkLedger on Render or explore the code on GitHub. Smarter bookkeeping for every shopkeeper.

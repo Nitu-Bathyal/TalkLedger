@@ -24,6 +24,7 @@ export function App() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCustomerIdForLedger, setSelectedCustomerIdForLedger] = useState<string>('');
 
   // Modals state
@@ -53,6 +54,8 @@ export function App() {
   };
 
   const loadData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const [dashRes, custRes] = await Promise.all([
         api.getDashboard(),
@@ -65,7 +68,9 @@ export function App() {
       }
     } catch (err: any) {
       console.error('Failed to load ledger data:', err);
-      showToast(err.message || 'Error connecting to backend API', 'error');
+      const errMsg = err.message || 'Error connecting to backend API';
+      setLoadError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -112,6 +117,8 @@ export function App() {
           <DashboardScreen
             summary={summary}
             loading={loading}
+            error={loadError}
+            onRetry={loadData}
             onNavigate={(tab) => {
               setCurrentTab(tab);
               window.scrollTo({ top: 0, behavior: 'smooth' });
